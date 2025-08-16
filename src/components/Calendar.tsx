@@ -12,6 +12,7 @@ import EventModal from './EventModal';
 import EventDetail from './EventDetail';
 import CalendarToolbar from './CalendarToolbar';
 import '../styles/calendar.css';
+import { useRenderProfiler } from '../utils/performance';
 
 // Configure dayjs
 dayjs.locale('zh-cn');
@@ -46,6 +47,7 @@ const EMPTY_STYLE = {};
 
 // Linus式优化：使用更细粒度的状态选择器
 const Calendar = forwardRef<any, {}>((props, ref) => {
+  useRenderProfiler('Calendar');
   // 消除不必要的重渲染 - 只订阅需要的状态
   const events = useCalendarStore(state => state.events);
   const view = useCalendarStore(state => state.view);

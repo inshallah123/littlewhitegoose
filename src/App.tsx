@@ -9,20 +9,22 @@ import 'antd/dist/reset.css';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const GlobalStyle = createGlobalStyle`
-  /* Linus式优化：移除Google字体，使用系统字体栈 */
+  /* 引入外部字体，并建立优雅的中英文混排字体栈 */
   
   * {
     box-sizing: border-box;
   }
   
   body {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    /* Poppins 用于英文/数字，后面是备用的中文系统字体栈 */
+    font-family: 'Poppins', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
     padding: 0;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
+    color: #333;
   }
   
   .ant-btn {
@@ -83,25 +85,27 @@ const Header = styled.div`
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
     background-clip: text;
-    font-size: 32px;
+    font-size: 36px;
     font-weight: 700;
     letter-spacing: -0.5px;
     text-align: center;
     position: relative;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.05);
     
     &::after {
       content: '🦢';
-      margin-left: 12px;
+      margin-left: 16px;
       -webkit-text-fill-color: initial;
-      font-size: 28px;
+      font-size: 30px;
       display: inline-block;
       animation: gentle-float 3s ease-in-out infinite;
+      vertical-align: middle;
     }
   }
   
   @keyframes gentle-float {
     0%, 100% { transform: translateY(0px); }
-    50% { transform: translateY(-3px); }
+    50% { transform: translateY(-4px); }
   }
 `;
 
@@ -162,7 +166,7 @@ function App() {
         <GlobalStyle />
         <AppContainer>
           <Header>
-            <h1>Goose's Calendar</h1>
+            <h1>Goose Calendar <span style={{ fontWeight: 400, fontSize: '32px' }}>鹅日历</span></h1>
           </Header>
           <CalendarComponent ref={calendarRef} />
         </AppContainer>

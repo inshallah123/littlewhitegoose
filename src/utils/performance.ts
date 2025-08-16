@@ -1,3 +1,5 @@
+import React from 'react';
+
 // Linus式性能优化工具集
 
 /**
@@ -58,4 +60,30 @@ export function useDebounce<T>(value: T, delay: number): T {
   return debouncedValue;
 }
 
-import React from 'react';
+/**
+ * 测量组件渲染时间
+ */
+export function useRenderProfiler(componentName: string) {
+  const renderCount = React.useRef(0);
+  const lastRenderTime = React.useRef(0);
+
+  React.useEffect(() => {
+    lastRenderTime.current = performance.now();
+  });
+
+  React.useLayoutEffect(() => {
+    const now = performance.now();
+    const duration = now - lastRenderTime.current;
+    renderCount.current += 1;
+    
+    console.log(
+      `%c[RenderProfiler] %c${componentName} %crendered %c${renderCount.current} %ctimes. Last render took %c${duration.toFixed(2)}ms`,
+      'color: #999;',
+      'color: #00f;',
+      'color: #999;',
+      'color: #f0f;',
+      'color: #999;',
+      'color: #f00;'
+    );
+  });
+}
