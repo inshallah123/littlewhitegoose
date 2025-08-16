@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { Select, Space, Typography } from 'antd';
+import styled from 'styled-components';
 import dayjs, { Dayjs } from 'dayjs';
 
 interface TimeSlotSelectorProps {
@@ -9,6 +10,58 @@ interface TimeSlotSelectorProps {
 }
 
 const { Text } = Typography;
+
+const SelectorContainer = styled(Space)`
+  width: 100%;
+  
+  .time-selector-label {
+    font-weight: 600;
+    color: #667eea;
+    font-size: 14px;
+    background: rgba(102, 126, 234, 0.05);
+    padding: 8px 16px;
+    border-radius: 12px;
+    border: 1px solid rgba(102, 126, 234, 0.1);
+  }
+`;
+
+const StyledSelect = styled(Select)`
+  .ant-select-selector {
+    border: 2px solid rgba(102, 126, 234, 0.2) !important;
+    border-radius: 12px !important;
+    padding: 8px 16px !important;
+    font-size: 14px !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    background: rgba(102, 126, 234, 0.02) !important;
+    min-height: 48px !important;
+    
+    &:hover {
+      border-color: rgba(102, 126, 234, 0.4) !important;
+      background: rgba(102, 126, 234, 0.04) !important;
+    }
+    
+    &.ant-select-focused {
+      border-color: #667eea !important;
+      box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+      background: white !important;
+    }
+    
+    .ant-select-selection-placeholder {
+      color: #a0aec0 !important;
+      font-style: italic !important;
+    }
+    
+    .ant-select-selection-item {
+      color: #4a5568 !important;
+      font-weight: 600 !important;
+    }
+  }
+  
+  &.ant-select-open .ant-select-selector {
+    border-color: #667eea !important;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1) !important;
+  }
+`;
 
 const timeSlots = [
   { label: '00:00 - 02:00', start: 0, end: 2 },
@@ -39,7 +92,9 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
     return `${startHour}-${endHour}`;
   }, [value]);
 
-  const handleSlotChange = (slotKey: string) => {
+  const handleSlotChange = (value: unknown) => {
+    const slotKey = value as string;
+    if (!slotKey) return;
     const [startStr, endStr] = slotKey.split('-');
     const startHour = parseInt(startStr);
     const endHour = parseInt(endStr);
@@ -58,19 +113,20 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
   );
 
   return (
-    <Space direction="vertical" style={{ width: '100%' }}>
-      <Text strong>
-        选择时间段 ({selectedDay.format('YYYY年MM月DD日')})
-      </Text>
-      <Select
+    <SelectorContainer direction="vertical">
+      <div className="time-selector-label">
+        🕐 选择时间段 ({selectedDay.format('YYYY年MM月DD日')})
+      </div>
+      <StyledSelect
         style={{ width: '100%' }}
-        placeholder="请选择时间段"
+        placeholder="⏰ 请选择一个时间段..."
         value={currentSlotKey}
         onChange={handleSlotChange}
         options={selectOptions}
         allowClear
+        size="large"
       />
-    </Space>
+    </SelectorContainer>
   );
 };
 

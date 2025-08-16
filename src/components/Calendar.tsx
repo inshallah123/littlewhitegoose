@@ -21,106 +21,223 @@ dayjs.extend(timezone);
 const localizer = dayjsLocalizer(dayjs);
 
 const CalendarContainer = styled.div`
-  background: white;
-  border-radius: 8px;
-  padding: 24px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  min-height: 600px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 32px;
+  box-shadow: 
+    0 12px 48px rgba(0, 0, 0, 0.1),
+    0 6px 24px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+  min-height: 650px;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.4), transparent);
+  }
 
   .rbc-calendar {
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     font-size: 14px;
+    background: transparent;
   }
 
   .rbc-event {
-    background-color: #1890ff;
     border: none;
-    border-radius: 6px;
-    padding: 4px 8px;
+    border-radius: 10px;
+    padding: 6px 12px;
     font-size: 12px;
-    font-weight: 500;
-    transition: all 0.2s ease;
+    font-weight: 600;
+    color: white;
     cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin: 1px;
+    box-shadow: 0 3px 12px rgba(0, 0, 0, 0.15);
     
     &:hover {
-      background-color: #0050b3;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(24, 144, 255, 0.3);
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      z-index: 10;
     }
   }
 
   .rbc-selected {
-    background-color: #0050b3;
-    box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+    transform: scale(1.05);
   }
 
   .rbc-today {
-    background-color: #f0f9ff;
-    border: 1px solid #bae7ff;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
+    position: relative;
+    
+    &::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+      animation: gentle-pulse 2s ease-in-out infinite;
+    }
   }
 
   .rbc-day-bg {
-    transition: background-color 0.2s ease;
+    transition: all 0.3s ease;
+    border-right: 1px solid rgba(102, 126, 234, 0.08);
+    border-bottom: 1px solid rgba(102, 126, 234, 0.08);
     
     &:hover {
-      background-color: #fafafa;
+      background: rgba(102, 126, 234, 0.05);
     }
   }
 
   .selected-date-bg {
-    background-color: #e6f4ff !important;
-    border: 2px solid #1890ff !important;
-    box-sizing: border-box;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%) !important;
+    border: 2px solid #667eea !important;
+    border-radius: 12px;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
+    position: relative;
+    
+    &::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      right: 2px;
+      bottom: 2px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    }
   }
 
   .rbc-toolbar {
-    margin-bottom: 24px;
-    padding-bottom: 16px;
-    border-bottom: 1px solid #f0f0f0;
+    margin-bottom: 32px;
+    padding-bottom: 24px;
+    border-bottom: 2px solid rgba(102, 126, 234, 0.1);
+    align-items: center;
     
     .rbc-btn-group {
       button {
-        border: 1px solid #d9d9d9;
-        background: white;
-        color: #262626;
-        padding: 6px 16px;
-        border-radius: 6px;
-        font-weight: 500;
-        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        background: rgba(102, 126, 234, 0.08);
+        border: 1px solid rgba(102, 126, 234, 0.2);
+        color: #667eea;
+        padding: 10px 18px;
+        border-radius: 12px;
+        font-weight: 600;
+        margin-right: 6px;
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        backdrop-filter: blur(10px);
+        font-size: 14px;
         
         &:hover {
-          border-color: #1890ff;
-          color: #1890ff;
-          transform: translateY(-1px);
-          box-shadow: 0 2px 4px rgba(24, 144, 255, 0.1);
+          background: rgba(102, 126, 234, 0.15);
+          border-color: rgba(102, 126, 234, 0.4);
+          color: #667eea;
+          transform: translateY(-2px);
+          box-shadow: 0 8px 24px rgba(102, 126, 234, 0.2);
         }
         
         &.rbc-active {
-          background: #1890ff;
+          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          border-color: transparent;
           color: white;
-          border-color: #1890ff;
+          box-shadow: 
+            0 8px 24px rgba(102, 126, 234, 0.3),
+            0 0 0 3px rgba(102, 126, 234, 0.1);
+          transform: translateY(-1px);
         }
       }
+    }
+    
+    .rbc-toolbar-label {
+      font-size: 24px;
+      font-weight: 700;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      padding: 0 24px;
+      white-space: nowrap;
+      letter-spacing: -0.5px;
     }
   }
 
   .rbc-header {
-    padding: 12px 8px;
-    font-weight: 600;
-    background: #fafafa;
-    border-bottom: 1px solid #f0f0f0;
+    padding: 16px 8px;
+    font-weight: 700;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-bottom: 1px solid rgba(102, 126, 234, 0.1);
+    color: #667eea;
+    text-align: center;
+    font-size: 14px;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
   }
 
   .rbc-month-view {
-    border: 1px solid #f0f0f0;
-    border-radius: 8px;
+    border: none;
+    border-radius: 16px;
     overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
   }
 
   .rbc-time-view {
-    border: 1px solid #f0f0f0;
-    border-radius: 8px;
+    border: none;
+    border-radius: 16px;
     overflow: hidden;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  }
+  
+  .rbc-date-cell {
+    padding: 4px;
+    
+    > a {
+      color: #4a5568;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      margin: 4px auto;
+      border-radius: 50%;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      font-size: 14px;
+      
+      &:hover {
+        background: rgba(102, 126, 234, 0.1);
+        transform: scale(1.1);
+        color: #667eea;
+      }
+    }
+    
+    &.rbc-off-range-bg {
+      background: rgba(0, 0, 0, 0.02);
+      
+      > a {
+        color: #a0aec0;
+        
+        &:hover {
+          background: rgba(102, 126, 234, 0.05);
+          color: #718096;
+        }
+      }
+    }
+  }
+  
+  @keyframes gentle-pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.8; }
   }
 `;
 
