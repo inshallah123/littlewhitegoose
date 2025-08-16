@@ -68,6 +68,7 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
         value={currentSlotKey}
         onChange={handleSlotChange}
         options={selectOptions}
+        allowClear
       />
     </Space>
   );
