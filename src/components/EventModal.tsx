@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { Modal, Form, Input, Switch, App } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import { CalendarEvent } from '../types';
@@ -25,52 +25,64 @@ const EventModal: React.FC<EventModalProps> = ({
   const [loading, setLoading] = useState(false);
   const { message } = App.useApp();
 
-  const isEditing = !!event;
-
-  const getInitialValues = useCallback(() => {
+  const isEditing = useMemo(() => !!event, [event]);
+  
+  const initialValues = useMemo(() => {
     if (event) {
-      const start = dayjs(event.start);
-      const end = dayjs(event.end);
       return {
         title: event.title,
         description: event.description,
-        timeSlot: { start, end },
+        timeSlot: event.isAllDay ? undefined : { start: dayjs(event.start), end: dayjs(event.end) },
         isAllDay: event.isAllDay
       };
     }
     
     if (defaultStart && defaultEnd) {
-      const start = dayjs(defaultStart);
-      const end = dayjs(defaultEnd);
       return {
         title: '',
         description: '',
-        timeSlot: { start, end },
+        timeSlot: { start: dayjs(defaultStart), end: dayjs(defaultEnd) },
         isAllDay: false
       };
     }
 
-    const now = dayjs();
-    const start = now.hour(9).minute(0).second(0);
-    const end = start.add(2, 'hour');
-    
     return {
       title: '',
       description: '',
-      timeSlot: { start, end },
+      timeSlot: undefined,
       isAllDay: false
     };
   }, [event, defaultStart, defaultEnd]);
+
+  const currentDate = useMemo(() => 
+    initialValues.timeSlot?.start?.toDate() || defaultStart || new Date(), 
+    [initialValues.timeSlot, defaultStart]
+  );
 
   const handleSubmit = useCallback(async () => {
     try {
       setLoading(true);
       const values = await form.validateFields();
       
+      let startTime, endTime;
+      
+      if (values.isAllDay) {
+        const selectedDay = dayjs(currentDate);
+        startTime = selectedDay.startOf('day').toDate();
+        endTime = selectedDay.endOf('day').toDate();
+      } else {
+        if (!values.timeSlot) {
+          message.error('请选择时间段');
+          return;
+        }
+        startTime = values.timeSlot.start.toDate();
+        endTime = values.timeSlot.end.toDate();
+      }
+      
       const eventData: Omit<CalendarEvent, 'id'> = {
         title: values.title.trim(),
-        start: values.timeSlot.start.toDate(),
-        end: values.timeSlot.end.toDate(),
+        start: startTime,
+        end: endTime,
         description: values.description?.trim() || '',
         color: '#1890ff',
         isAllDay: values.isAllDay || false
@@ -85,7 +97,7 @@ const EventModal: React.FC<EventModalProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [form, onSubmit, onClose, message, isEditing]);
+  }, [form, onSubmit, onClose, message, isEditing, currentDate]);
 
   const handleCancel = useCallback(() => {
     onClose();
@@ -99,11 +111,18 @@ const EventModal: React.FC<EventModalProps> = ({
     form.setFieldValue('timeSlot', timeSlot);
   }, [form]);
 
+  const handleAllDayChange = useCallback((checked: boolean) => {
+    form.setFieldValue('isAllDay', checked);
+    if (checked) {
+      form.setFieldValue('timeSlot', undefined);
+    }
+  }, [form]);
+
   React.useEffect(() => {
     if (visible) {
-      form.setFieldsValue(getInitialValues());
+      form.setFieldsValue(initialValues);
     }
-  }, [visible, form, getInitialValues]);
+  }, [visible, form, initialValues]);
 
   React.useEffect(() => {
     if (!visible) return;
@@ -122,8 +141,6 @@ const EventModal: React.FC<EventModalProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [visible, handleSubmit, handleCancel]);
 
-  const formValues = form.getFieldsValue();
-  const currentDate = formValues?.timeSlot?.start?.toDate() || defaultStart || new Date();
 
   return (
     <Modal
@@ -137,7 +154,8 @@ const EventModal: React.FC<EventModalProps> = ({
       confirmLoading={loading}
       maskClosable={!loading}
       keyboard={!loading}
-      destroyOnClose
+      destroyOnClose={false}
+      forceRender={false}
     >
       <Form
         form={form}
@@ -174,18 +192,28 @@ const EventModal: React.FC<EventModalProps> = ({
           label="全天事件"
           valuePropName="checked"
         >
-          <Switch />
+          <Switch onChange={handleAllDayChange} />
         </Form.Item>
 
-        <Form.Item
-          name="timeSlot"
-          label="时间"
-          rules={[{ required: true, message: '请选择时间段' }]}
-        >
-          <TimeSlotSelector
-            date={currentDate}
-            onChange={handleTimeSlotChange}
-          />
+        <Form.Item noStyle shouldUpdate={(prevValues, currentValues) => prevValues.isAllDay !== currentValues.isAllDay}>
+          {({ getFieldValue }) => {
+            const isAllDay = getFieldValue('isAllDay');
+            
+            if (isAllDay) return null;
+            
+            return (
+              <Form.Item
+                name="timeSlot"
+                label="时间"
+                rules={[{ required: true, message: '请选择时间段' }]}
+              >
+                <TimeSlotSelector
+                  date={currentDate}
+                  onChange={handleTimeSlotChange}
+                />
+              </Form.Item>
+            );
+          }}
         </Form.Item>
       </Form>
     </Modal>

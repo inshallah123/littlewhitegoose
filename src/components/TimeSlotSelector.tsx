@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Select, Space, Typography } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 
@@ -30,14 +30,14 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
   value,
   onChange,
 }) => {
-  const selectedDay = dayjs(date);
+  const selectedDay = useMemo(() => dayjs(date), [date]);
   
-  const getCurrentSlotKey = () => {
+  const currentSlotKey = useMemo(() => {
     if (!value) return undefined;
     const startHour = value.start.hour();
     const endHour = value.end.hour() === 0 && value.end.date() > value.start.date() ? 24 : value.end.hour();
     return `${startHour}-${endHour}`;
-  };
+  }, [value]);
 
   const handleSlotChange = (slotKey: string) => {
     const [startStr, endStr] = slotKey.split('-');
@@ -50,6 +50,13 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
     onChange?.({ start, end: endHour === 24 ? end.add(1, 'day') : end });
   };
 
+  const selectOptions = useMemo(() => 
+    timeSlots.map(slot => ({
+      label: slot.label,
+      value: `${slot.start}-${slot.end}`,
+    })), []
+  );
+
   return (
     <Space direction="vertical" style={{ width: '100%' }}>
       <Text strong>
@@ -58,12 +65,9 @@ const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({
       <Select
         style={{ width: '100%' }}
         placeholder="请选择时间段"
-        value={getCurrentSlotKey()}
+        value={currentSlotKey}
         onChange={handleSlotChange}
-        options={timeSlots.map(slot => ({
-          label: slot.label,
-          value: `${slot.start}-${slot.end}`,
-        }))}
+        options={selectOptions}
       />
     </Space>
   );
