@@ -8,7 +8,7 @@ import styled from 'styled-components';
 import { Spin } from 'antd';
 import { LoadingOutlined } from '@ant-design/icons';
 import useCalendarStore from '../store/calendarStore';
-import { CalendarEvent } from '../types';
+import { CalendarEvent, ReactCalendarEvent, toReactEvent, fromReactEvent, msToDate, dateToMs, nowMs } from '../types';
 import EventModal from './EventModal';
 import EventDetail from './EventDetail';
 import CalendarToolbar from './CalendarToolbar';
@@ -139,21 +139,26 @@ const LoadingOverlay = styled.div`
 `;
 
 const Calendar = forwardRef<any, {}>((props, ref) => {
-  const { events, view, isLoading, setView, addEvent, deleteEvent, updateEvent, loadEvents } = useCalendarStore();
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const { events, view, isLoading, selectedMs, viewMs, setView, saveEvent, deleteEvent, loadEvents, setSelectedMs, setViewMs } = useCalendarStore();
   
-  // Modal states
+  // Modal states - simplified
   const [eventModalVisible, setEventModalVisible] = useState(false);
   const [eventDetailVisible, setEventDetailVisible] = useState(false);
-  const [modalInitialData, setModalInitialData] = useState<{ start: Date; end: Date } | null>(null);
+  const [modalEventData, setModalEventData] = useState<Partial<CalendarEvent> | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
-  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
 
   // Load events on component mount
   useEffect(() => {
     loadEvents();
   }, [loadEvents]);
+
+  // Memoized conversions for react-big-calendar
+  const reactEvents = useMemo(() => 
+    events.map(toReactEvent), 
+    [events]
+  );
+
+  const currentDate = useMemo(() => msToDate(viewMs), [viewMs]);
 
   const handleViewChange = useCallback((newView: View) => {
     if (newView === 'month' || newView === 'week') {
@@ -162,124 +167,104 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
   }, [setView]);
 
   const handleNavigate = useCallback((newDate: Date) => {
-    setCurrentDate(newDate);
-  }, []);
+    setViewMs(dateToMs(newDate));
+  }, [setViewMs]);
 
-  const handleCreateEvent = useCallback(async (eventData: Omit<CalendarEvent, 'id'>) => {
-    try {
-      await addEvent(eventData);
-    } catch (error) {
-      console.error('创建事件失败:', error);
-      throw error;
-    }
-  }, [addEvent]);
-
-  const handleUpdateEvent = useCallback(async (id: string, eventData: Partial<CalendarEvent>) => {
-    try {
-      await updateEvent(id, eventData);
-    } catch (error) {
-      console.error('更新事件失败:', error);
-      throw error;
-    }
-  }, [updateEvent]);
-
-  const showCreateEventModal = useCallback((start: Date, end: Date) => {
-    setModalInitialData({ start, end });
-    setEditingEvent(null);
+  // Unified event modal handlers
+  const showEventModal = useCallback((eventData: Partial<CalendarEvent>) => {
+    setModalEventData(eventData);
     setEventModalVisible(true);
   }, []);
 
-  const showEditEventModal = useCallback((event: CalendarEvent) => {
-    setEditingEvent(event);
-    setModalInitialData(null);
-    setEventModalVisible(true);
+  const hideEventModal = useCallback(() => {
+    setEventModalVisible(false);
+    setModalEventData(null);
   }, []);
 
 
-  const handleSelectEvent = useCallback((event: CalendarEvent) => {
+  const handleSelectEvent = useCallback((reactEvent: ReactCalendarEvent) => {
+    const event = fromReactEvent(reactEvent);
     setSelectedEvent(event);
     setEventDetailVisible(true);
   }, []);
 
   const handleEditEvent = useCallback((event: CalendarEvent) => {
-    showEditEventModal(event);
-  }, [showEditEventModal]);
+    showEventModal(event);
+  }, [showEventModal]);
 
-  const eventStyleGetter = useCallback((event: CalendarEvent) => ({
-    style: {
-      backgroundColor: event.color || '#1890ff',
-      borderRadius: '4px',
-      opacity: 0.8,
-      color: 'white',
-      border: 'none',
-      display: 'block',
-    },
-  }), []);
+  const eventStyleGetter = useCallback((reactEvent: ReactCalendarEvent) => {
+    const event = fromReactEvent(reactEvent);
+    return {
+      style: {
+        backgroundColor: event.color || '#1890ff',
+        borderRadius: '4px',
+        opacity: 0.8,
+        color: 'white',
+        border: 'none',
+        display: 'block',
+      },
+    };
+  }, []);
 
-  const selectedDateKey = useMemo(() => {
-    if (!selectedDate) return null;
-    return `${selectedDate.getFullYear()}-${selectedDate.getMonth()}-${selectedDate.getDate()}`;
-  }, [selectedDate]);
+  const selectedDate = useMemo(() => msToDate(selectedMs), [selectedMs]);
 
   const dayPropGetter = useCallback((date: Date) => {
-    if (selectedDateKey) {
-      const dateKey = `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
-      if (dateKey === selectedDateKey) {
-        return {
-          className: 'selected-date-bg',
-          style: {
-            backgroundColor: '#bae7ff',
-            border: '2px solid #1890ff',
-          }
-        };
+    const dateMs = dateToMs(date);
+    const sameDaySelected = Math.abs(dateMs - selectedMs) < 24 * 60 * 60 * 1000 &&
+                            msToDate(dateMs).getDate() === msToDate(selectedMs).getDate();
+    
+    return sameDaySelected ? {
+      className: 'selected-date-bg',
+      style: {
+        backgroundColor: '#bae7ff',
+        border: '2px solid #1890ff',
       }
-    }
-    return {};
-  }, [selectedDateKey]);
+    } : {};
+  }, [selectedMs]);
+
+  // Linus式改进：消除嵌套，单一职责  
+  const createDefaultEvent = useCallback((startDate: Date): Partial<CalendarEvent> => {
+    return {
+      title: '',
+      color: '#1890ff'
+    };
+  }, []);
 
   const handleAddEvent = useCallback(() => {
-    let startTime, endTime;
+    const eventData = createDefaultEvent(selectedDate);
+    showEventModal(eventData);
+  }, [selectedDate, createDefaultEvent, showEventModal]);
 
-    if (selectedDate) {
-      // 使用选中的日期，时间设为合理的默认时间（上午9点）
-      const selectedDay = dayjs(selectedDate);
-      startTime = selectedDay.hour(9).minute(0).second(0);
-      endTime = startTime.add(1, 'hour');
-    } else {
-      // 没有选中日期时使用当前时间
-      const now = dayjs();
-      startTime = now;
-      endTime = now.add(1, 'hour');
-    }
-    
-    showCreateEventModal(startTime.toDate(), endTime.toDate());
-  }, [selectedDate, showCreateEventModal]);
+  const handleSlotDoubleClick = useCallback((start: Date) => {
+    const eventData = createDefaultEvent(start);
+    showEventModal(eventData);
+  }, [createDefaultEvent, showEventModal]);
 
-  const handleSelectSlot = useCallback(({ start, end, slots, action }: { start: Date; end: Date; slots: Date[]; action: string }) => {
+  const handleSlotSelect = useCallback((start: Date) => {
+    setSelectedMs(dateToMs(start));
+  }, [setSelectedMs]);
+
+  const handleSelectSlot = useCallback(({ start, action }: { start: Date; end: Date; slots: Date[]; action: string }) => {
     if (action === 'doubleClick') {
-      const selectedDay = dayjs(start);
-      // 双击日期时，使用合理的默认时间（上午9点）
-      const startTime = selectedDay.hour(9).minute(0).second(0);
-      const endTime = startTime.add(1, 'hour');
-      showCreateEventModal(startTime.toDate(), endTime.toDate());
-    } else if (slots.length === 1) {
-      setSelectedDate(start);
-    }
-  }, [showCreateEventModal]);
-
-  const handleModalSubmit = useCallback(async (eventData: Omit<CalendarEvent, 'id'>) => {
-    if (editingEvent) {
-      await handleUpdateEvent(editingEvent.id, eventData);
+      handleSlotDoubleClick(start);
     } else {
-      await handleCreateEvent(eventData);
+      handleSlotSelect(start);
     }
-  }, [editingEvent, handleCreateEvent, handleUpdateEvent]);
+  }, [handleSlotDoubleClick, handleSlotSelect]);
 
-  const handleModalClose = useCallback(() => {
-    setEventModalVisible(false);
-    setEditingEvent(null);
-    setModalInitialData(null);
-  }, []);
+  // Unified event handling - no special cases
+  const handleModalSubmit = useCallback(async (eventData: Partial<CalendarEvent>) => {
+    try {
+      await saveEvent({
+        ...modalEventData,
+        ...eventData
+      });
+      hideEventModal();
+    } catch (error) {
+      console.error('Failed to save event:', error);
+      throw error;
+    }
+  }, [modalEventData, saveEvent, hideEventModal]);
 
   const handleDeleteEvent = useCallback(async (eventId: string) => {
     try {
@@ -292,7 +277,7 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
     }
   }, [deleteEvent]);
 
-  // 暴露给父组件的方法
+  // Expose methods to parent component
   useImperativeHandle(ref, () => ({
     handleMenuNewEvent: handleAddEvent,
     handleMenuViewChange: (viewType: string) => {
@@ -325,7 +310,7 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
         
         <BigCalendar
           localizer={localizer}
-          events={events}
+          events={reactEvents}
           startAccessor="start"
           endAccessor="end"
           style={{ height: 600, minHeight: 500 }}
@@ -361,11 +346,10 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
       
       <EventModal
         visible={eventModalVisible}
-        onClose={handleModalClose}
+        onClose={hideEventModal}
         onSubmit={handleModalSubmit}
-        event={editingEvent}
-        defaultStart={modalInitialData?.start}
-        defaultEnd={modalInitialData?.end}
+        event={modalEventData}
+        selectedDate={selectedDate}
       />
 
       <EventDetail
@@ -381,4 +365,5 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
 
 Calendar.displayName = 'Calendar';
 
-export default Calendar;
+// Memoize the entire component to prevent unnecessary re-renders
+export default memo(Calendar);

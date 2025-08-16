@@ -1,16 +1,15 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, memo } from 'react';
 import { Modal, Form, Input, Switch, App } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
-import { CalendarEvent } from '../types';
+import { CalendarEvent, msToDate, dateToMs } from '../types';
 import TimeSlotSelector from './TimeSlotSelector';
 
 interface EventModalProps {
   visible: boolean;
   onClose: () => void;
-  onSubmit: (event: Omit<CalendarEvent, 'id'>) => Promise<void>;
-  event?: CalendarEvent | null;
-  defaultStart?: Date;
-  defaultEnd?: Date;
+  onSubmit: (event: Partial<CalendarEvent>) => Promise<void>;
+  event?: Partial<CalendarEvent> | null;
+  selectedDate?: Date;
 }
 
 const EventModal: React.FC<EventModalProps> = ({
@@ -18,31 +17,27 @@ const EventModal: React.FC<EventModalProps> = ({
   onClose,
   onSubmit,
   event,
-  defaultStart,
-  defaultEnd
+  selectedDate
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
   const { message } = App.useApp();
 
-  const isEditing = useMemo(() => !!event, [event]);
+  const isEditing = useMemo(() => !!event?.id, [event?.id]);
   
   const initialValues = useMemo(() => {
     if (event) {
+      const startDate = event.startMs ? msToDate(event.startMs) : new Date();
+      const endDate = event.endMs ? msToDate(event.endMs) : new Date();
+      
       return {
-        title: event.title,
-        description: event.description,
-        timeSlot: event.isAllDay ? undefined : { start: dayjs(event.start), end: dayjs(event.end) },
-        isAllDay: event.isAllDay
-      };
-    }
-    
-    if (defaultStart && defaultEnd) {
-      return {
-        title: '',
-        description: '',
-        timeSlot: { start: dayjs(defaultStart), end: dayjs(defaultEnd) },
-        isAllDay: false
+        title: event.title || '',
+        description: event.description || '',
+        timeSlot: (event.isAllDay || (!event.startMs && !event.endMs)) ? undefined : { 
+          start: dayjs(startDate), 
+          end: dayjs(endDate) 
+        },
+        isAllDay: event.isAllDay || false
       };
     }
 
@@ -52,12 +47,17 @@ const EventModal: React.FC<EventModalProps> = ({
       timeSlot: undefined,
       isAllDay: false
     };
-  }, [event, defaultStart, defaultEnd]);
+  }, [event]);
 
-  const currentDate = useMemo(() => 
-    initialValues.timeSlot?.start?.toDate() || defaultStart || new Date(), 
-    [initialValues.timeSlot, defaultStart]
-  );
+  const currentDate = useMemo(() => {
+    if (initialValues.timeSlot?.start) {
+      return initialValues.timeSlot.start.toDate();
+    }
+    if (event?.startMs) {
+      return msToDate(event.startMs);
+    }
+    return selectedDate || new Date();
+  }, [initialValues.timeSlot, event?.startMs, selectedDate]);
 
   const handleSubmit = useCallback(async () => {
     try {
@@ -79,12 +79,13 @@ const EventModal: React.FC<EventModalProps> = ({
         endTime = values.timeSlot.end.toDate();
       }
       
-      const eventData: Omit<CalendarEvent, 'id'> = {
+      const eventData: Partial<CalendarEvent> = {
+        id: event?.id,
         title: values.title.trim(),
-        start: startTime,
-        end: endTime,
+        startMs: dateToMs(startTime),
+        endMs: dateToMs(endTime),
         description: values.description?.trim() || '',
-        color: '#1890ff',
+        color: event?.color || '#1890ff',
         isAllDay: values.isAllDay || false
       };
 
@@ -209,6 +210,7 @@ const EventModal: React.FC<EventModalProps> = ({
               >
                 <TimeSlotSelector
                   date={currentDate}
+                  value={form.getFieldValue('timeSlot')}
                   onChange={handleTimeSlotChange}
                 />
               </Form.Item>
@@ -220,4 +222,4 @@ const EventModal: React.FC<EventModalProps> = ({
   );
 };
 
-export default EventModal;
+export default memo(EventModal);
