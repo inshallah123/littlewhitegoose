@@ -6,6 +6,7 @@ import styled, { createGlobalStyle } from 'styled-components';
 import dayjs from 'dayjs';
 import isBetween from 'dayjs/plugin/isBetween';
 import CalendarComponent from './components/Calendar';
+import Goose from './components/Goose';
 import useCalendarStore from './store/calendarStore';
 import 'antd/dist/reset.css';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
@@ -206,6 +207,7 @@ function App() {
             <h1>Goose Calendar <span style={{ fontWeight: 400, fontSize: '32px' }}>鹅日历</span></h1>
           </Header>
           <CalendarComponent ref={calendarRef} />
+          <Goose />
         </AppContainer>
       </AntdApp>
     </ConfigProvider>
