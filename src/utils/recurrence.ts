@@ -1,5 +1,37 @@
-import { CalendarEvent } from '../types';
+import { CalendarEvent, RecurrenceRule } from '../types';
 import { addMonths, addQuarters, addYears, addDays, setDate, lastDayOfMonth } from 'date-fns';
+
+const calculateNextOccurrence = (
+  currentDate: Date,
+  rule: RecurrenceRule,
+  originalDay: number
+): Date => {
+  let nextDate = new Date(currentDate);
+  switch (rule.type) {
+    case 'monthly':
+      nextDate = addMonths(nextDate, rule.interval);
+      if (nextDate.getDate() !== originalDay) {
+        nextDate = lastDayOfMonth(nextDate);
+      }
+      break;
+    case 'quarterly':
+      nextDate = addQuarters(nextDate, rule.interval);
+      if (nextDate.getDate() !== originalDay) {
+        nextDate = lastDayOfMonth(nextDate);
+      }
+      break;
+    case 'yearly':
+      nextDate = addYears(nextDate, rule.interval);
+      if (nextDate.getDate() !== originalDay) {
+        nextDate = lastDayOfMonth(nextDate);
+      }
+      break;
+    case 'custom':
+      nextDate = addDays(nextDate, rule.interval);
+      break;
+  }
+  return nextDate;
+};
 
 /**
  * Generates instances of a recurring event within a given date range.
@@ -39,33 +71,7 @@ export const generateRecurringEvents = (
     }
 
     const currentOccurrence = new Date(nextOccurrence);
-    switch (recurrenceRule.type) {
-      case 'monthly':
-        nextOccurrence = addMonths(nextOccurrence, recurrenceRule.interval);
-        // Handle months with fewer days (e.g., event on 31st, next month has 30)
-        if (nextOccurrence.getDate() !== originalDay) {
-          nextOccurrence = lastDayOfMonth(nextOccurrence);
-        }
-        break;
-      case 'quarterly':
-        nextOccurrence = addQuarters(nextOccurrence, recurrenceRule.interval);
-        if (nextOccurrence.getDate() !== originalDay) {
-          nextOccurrence = lastDayOfMonth(nextOccurrence);
-        }
-        break;
-      case 'yearly':
-        nextOccurrence = addYears(nextOccurrence, recurrenceRule.interval);
-        if (nextOccurrence.getDate() !== originalDay) {
-          nextOccurrence = lastDayOfMonth(nextOccurrence);
-        }
-        break;
-      case 'custom':
-        nextOccurrence = addDays(nextOccurrence, recurrenceRule.interval);
-        break;
-      default:
-        // Stop if rule is unknown
-        return instances;
-    }
+    nextOccurrence = calculateNextOccurrence(nextOccurrence, recurrenceRule, originalDay);
     
     // Break if the date is not advancing to prevent infinite loops
     if (currentOccurrence.getTime() === nextOccurrence.getTime()) {
@@ -97,29 +103,7 @@ export const getNextOccurrence = (
   // Find the first occurrence that is after the `afterDate`
   while (nextOccurrence <= afterDate) {
     const currentOccurrence = new Date(nextOccurrence);
-    switch (recurrenceRule.type) {
-      case 'monthly':
-        nextOccurrence = addMonths(nextOccurrence, recurrenceRule.interval);
-        if (nextOccurrence.getDate() !== originalDay) {
-          nextOccurrence = lastDayOfMonth(nextOccurrence);
-        }
-        break;
-      case 'quarterly':
-        nextOccurrence = addQuarters(nextOccurrence, recurrenceRule.interval);
-        if (nextOccurrence.getDate() !== originalDay) {
-          nextOccurrence = lastDayOfMonth(nextOccurrence);
-        }
-        break;
-      case 'yearly':
-        // The user requested 365 days, not a calendar year
-        nextOccurrence = addDays(nextOccurrence, 365 * recurrenceRule.interval);
-        break;
-      case 'custom':
-        nextOccurrence = addDays(nextOccurrence, recurrenceRule.interval);
-        break;
-      default:
-        return null;
-    }
+    nextOccurrence = calculateNextOccurrence(nextOccurrence, recurrenceRule, originalDay);
     
     if (currentOccurrence.getTime() === nextOccurrence.getTime()) {
         return null; // Prevent infinite loop
@@ -129,28 +113,8 @@ export const getNextOccurrence = (
   // Now we have an occurrence after `afterDate`, but we need to check for exceptions
   while (exceptionDates?.includes(nextOccurrence.getTime())) {
      const currentOccurrence = new Date(nextOccurrence);
-     switch (recurrenceRule.type) {
-      case 'monthly':
-        nextOccurrence = addMonths(nextOccurrence, recurrenceRule.interval);
-        if (nextOccurrence.getDate() !== originalDay) {
-          nextOccurrence = lastDayOfMonth(nextOccurrence);
-        }
-        break;
-      case 'quarterly':
-        nextOccurrence = addQuarters(nextOccurrence, recurrenceRule.interval);
-        if (nextOccurrence.getDate() !== originalDay) {
-          nextOccurrence = lastDayOfMonth(nextOccurrence);
-        }
-        break;
-      case 'yearly':
-        nextOccurrence = addDays(nextOccurrence, 365 * recurrenceRule.interval);
-        break;
-      case 'custom':
-        nextOccurrence = addDays(nextOccurrence, recurrenceRule.interval);
-        break;
-      default:
-        return null;
-    }
+     nextOccurrence = calculateNextOccurrence(nextOccurrence, recurrenceRule, originalDay);
+
     if (currentOccurrence.getTime() === nextOccurrence.getTime()) {
         return null; // Prevent infinite loop
     }

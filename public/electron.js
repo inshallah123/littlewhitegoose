@@ -103,28 +103,6 @@ function createMenu() {
       label: '视图',
       submenu: [
         {
-          label: '月视图',
-          accelerator: 'CmdOrCtrl+1',
-          click: () => {
-            mainWindow.webContents.send('change-view', 'month');
-          }
-        },
-        {
-          label: '周视图',
-          accelerator: 'CmdOrCtrl+2',
-          click: () => {
-            mainWindow.webContents.send('change-view', 'week');
-          }
-        },
-        {
-          label: '日视图',
-          accelerator: 'CmdOrCtrl+3',
-          click: () => {
-            mainWindow.webContents.send('change-view', 'day');
-          }
-        },
-        { type: 'separator' },
-        {
           label: '刷新',
           accelerator: 'CmdOrCtrl+R',
           click: () => {
@@ -144,14 +122,19 @@ function createMenu() {
       label: '帮助',
       submenu: [
         {
-          label: '关于桌面日历',
+          label: "what about Goose's calendar?…",
           click: () => {
             // Show about dialog
             require('electron').dialog.showMessageBox(mainWindow, {
-              type: 'info',
-              title: '关于桌面日历',
-              message: '桌面日历',
-              detail: '一个基于 Electron 和 React 构建的美观桌面日历应用程序。'
+              title: 'For Goose',
+              message: 'Dev by yyh, present for goose, as she advises it.',
+              detail: `The wild goose calls the turning year,
+And marks the moments we hold dear.
+Through summer sun and winter's grace,
+A charted smile on your dear face.
+Each day a note, in this design,
+A simple truth: that you are mine.`,
+              buttons: ['Aww <3']
             });
           }
         }

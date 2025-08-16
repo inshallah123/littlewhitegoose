@@ -174,7 +174,9 @@ function App() {
     const onEventsCleared = () => clearAllEvents();
 
     const unregisterOnNewEvent = window.electronAPI.onNewEvent(onNewEvent);
-    const unregisterOnChangeView = window.electronAPI.onChangeView((event, view) => onChangeView(view));
+    const unregisterOnChangeView = window.electronAPI.onChangeView((_event, view: string) => {
+      calendarRef.current?.handleMenuViewChange?.(view);
+    });
     const unregisterOnEventsCleared = window.electronAPI.onEventsCleared(onEventsCleared);
 
 
