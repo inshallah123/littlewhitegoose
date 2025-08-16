@@ -52,28 +52,6 @@ const NewEventButton = styled(Button)`
   }
 `;
 
-const DateInfo = styled.div`
-  background: rgba(102, 126, 234, 0.05);
-  border-radius: 12px;
-  padding: 12px 16px;
-  border: 1px solid rgba(102, 126, 234, 0.1);
-  
-  .selected-date {
-    font-size: 14px;
-    font-weight: 600;
-    color: #667eea;
-    margin-bottom: 4px;
-    display: block;
-  }
-  
-  .hint-text {
-    font-size: 12px;
-    color: #718096;
-    opacity: 0.8;
-    font-style: italic;
-  }
-`;
-
 const ViewButtonGroup = styled(Space)`
   .ant-btn {
     height: 42px;
@@ -136,20 +114,6 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
         >
           ✨ 新建事件
         </NewEventButton>
-        
-        <DateInfo>
-          <span className="selected-date">
-            📅 {React.useMemo(() => selectedDate.toLocaleDateString('zh-CN', { 
-              year: 'numeric', 
-              month: 'long', 
-              day: 'numeric',
-              weekday: 'long' 
-            }), [selectedDate])}
-          </span>
-          <span className="hint-text">
-            💡 双击日期快速创建事件
-          </span>
-        </DateInfo>
       </LeftSection>
 
       <ViewButtonGroup size={8}>

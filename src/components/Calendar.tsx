@@ -260,6 +260,9 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
           timeslots={2}
           onSelectSlot={handleSelectSlot}
           messages={CALENDAR_MESSAGES}
+          formats={{
+            dateFormat: 'D',
+          }}
         />
       </div>
       

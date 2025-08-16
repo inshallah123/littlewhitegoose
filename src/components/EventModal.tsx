@@ -166,6 +166,9 @@ const EventModal: React.FC<EventModalProps> = ({
       forceRender={false}
       width={520}
       centered
+      /* 新增：通过设置空的 transitionName 来禁用默认的缩放和淡入淡出动画 */
+      transitionName=""
+      maskTransitionName=""
     >
       <StyledForm
         form={form}
