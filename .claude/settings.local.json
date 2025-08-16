@@ -1,0 +1,37 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm init:*)",
+      "Bash(mkdir:*)",
+      "Bash(npm install:*)",
+      "Bash(npm config set:*)",
+      "Bash(npm start)",
+      "Bash(rmdir:*)",
+      "Bash(rm:*)",
+      "Bash(set ELECTRON_MIRROR=https://npmmirror.com/mirrors/electron/)",
+      "Bash(set ELECTRON_CUSTOM_DIR={{ version }})",
+      "Bash(npm run:*)",
+      "Bash(taskkill:*)",
+      "Bash(npm rebuild:*)",
+      "Bash(npx:*)",
+      "Bash(powershell:*)",
+      "Bash(set BROWSER=none)",
+      "Bash(TASKKILL /F /IM node.exe)",
+      "Bash(cmd /c:*)",
+      "Bash(tasklist:*)",
+      "Bash(npm uninstall:*)",
+      "Bash(set PORT=3002)",
+      "Bash(TASKKILL /F /PID 27464)",
+      "Bash(Cross-env PORT=3002 npm start)",
+      "Bash(cross-env:*)",
+      "WebSearch",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:ant.design)",
+      "Bash(find:*)",
+      "Bash(git init:*)",
+      "Bash(git add:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
