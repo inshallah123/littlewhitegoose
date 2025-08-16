@@ -6,6 +6,7 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import Spin from 'antd/es/spin';
 import { LoadingOutlined } from '@ant-design/icons';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 import useCalendarStore from '../store/calendarStore';
 import { CalendarEvent, ReactCalendarEvent, toReactEvent, fromReactEvent, msToDate, dateToMs } from '../types';
 import EventModal from './EventModal';
@@ -13,6 +14,7 @@ import EventDetail from './EventDetail';
 import CalendarToolbar from './CalendarToolbar';
 import '../styles/calendar.css';
 import { useRenderProfiler } from '../utils/performance';
+import { getNextOccurrence } from '../utils/recurrence';
 
 // Configure dayjs
 dayjs.locale('zh-cn');
@@ -55,7 +57,8 @@ interface CalendarProps {}
 const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
   useRenderProfiler('Calendar');
   
-  const events = useCalendarStore(state => state.events);
+  const allEvents = useCalendarStore(state => state.events);
+  const getEventsInView = useCalendarStore(state => state.getEventsInView);
   const view = useCalendarStore(state => state.view);
   const isLoading = useCalendarStore(state => state.isLoading);
   const selectedMs = useCalendarStore(state => state.selectedMs);
@@ -71,6 +74,7 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
   const [eventDetailVisible, setEventDetailVisible] = useState(false);
   const [modalEventData, setModalEventData] = useState<Partial<CalendarEvent> | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  const [editScope, setEditScope] = useState<'one' | 'all'>('all');
   
   // State for the new AutoComplete search
   const [searchValue, setSearchValue] = useState('');
@@ -80,10 +84,18 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
     loadEvents();
   }, [loadEvents]);
 
-  // The calendar now always displays all events. Filtering is replaced by navigation.
+  const currentDate = useMemo(() => msToDate(viewMs), [viewMs]);
+
+  const eventsInView = useMemo(() => {
+    const viewDate = new Date(viewMs);
+    const startDate = view === 'month' ? startOfMonth(viewDate) : startOfWeek(viewDate, { weekStartsOn: 1 });
+    const endDate = view === 'month' ? endOfMonth(viewDate) : endOfWeek(viewDate, { weekStartsOn: 1 });
+    return getEventsInView(startDate, endDate);
+  }, [viewMs, view, getEventsInView, allEvents]); // Depend on allEvents to recompute when exceptions are added
+
   const reactEvents = useMemo(() => 
-    events.map(toReactEvent),
-    [events]
+    eventsInView.map(toReactEvent),
+    [eventsInView]
   );
 
   const handleSearch = useCallback((text: string) => {
@@ -94,70 +106,73 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
     }
 
     const lowerCaseText = text.toLowerCase();
+    const now = new Date();
 
-    // Helper to escape regex special characters
-    const escapeRegExp = (str: string) => {
-      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    };
-
-    // Helper to highlight text
-    const highlightText = (str: string, highlight: string) => {
-      if (!highlight.trim() || !str) {
-        return str;
-      }
-      const regex = new RegExp(`(${escapeRegExp(highlight)})`, 'gi');
-      const parts = str.split(regex);
-      return parts.map((part, i) =>
-        part.toLowerCase() === highlight.toLowerCase() ? (
-          <span key={i} style={{ color: '#1890ff', fontWeight: 'bold' }}>
-            {part}
-          </span>
-        ) : (
-          part
-        )
+    const highlightMatch = (str: string, query: string) => {
+      if (!query || !str) return str;
+      const index = str.toLowerCase().indexOf(query.toLowerCase());
+      if (index === -1) return str;
+      const pre = str.slice(0, index);
+      const match = str.slice(index, index + query.length);
+      const post = str.slice(index + query.length);
+      return (
+        <>
+          {pre}
+          <strong style={{ color: '#f50', fontWeight: 'bold' }}>{match}</strong>
+          {post}
+        </>
       );
     };
 
-    const newOptions = events.reduce<any[]>((acc, event) => {
-      const eventDate = dayjs(msToDate(event.startMs)).format('YYYY-MM-DD');
+    const newOptions = allEvents.reduce<any[]>((acc, event) => {
       const titleMatch = event.title.toLowerCase().includes(lowerCaseText);
       const descMatch = event.description && event.description.toLowerCase().includes(lowerCaseText);
       const tagMatch = event.tags && event.tags.some(tag => tag.toLowerCase().includes(lowerCaseText));
-      const dateMatch = eventDate.includes(lowerCaseText);
 
-      if (titleMatch || descMatch || tagMatch || dateMatch) {
-        let descriptionSnippet = '';
-        if (event.description) {
-          if (descMatch) {
-            // Find the sentence with the keyword
-            const sentences = event.description.split(/(?<=[.!?])\s+/);
-            const matchedSentence = sentences.find(s => s.toLowerCase().includes(lowerCaseText));
-            descriptionSnippet = matchedSentence || (event.description.substring(0, 40) + '...');
+      if (titleMatch || descMatch || tagMatch) {
+        let eventToShow = event;
+        
+        if (event.recurrenceRule) {
+          const nextOccurrence = getNextOccurrence(event, now);
+          if (nextOccurrence) {
+            const duration = event.endMs - event.startMs;
+            eventToShow = {
+              ...event,
+              startMs: nextOccurrence.getTime(),
+              endMs: nextOccurrence.getTime() + duration,
+            };
           } else {
-            // Show the beginning of the first sentence
-            descriptionSnippet = event.description.substring(0, 40) + '...';
+            return acc;
           }
         }
+        
+        const eventDate = dayjs(msToDate(eventToShow.startMs)).format('YYYY-MM-DD');
+        const dateMatch = eventDate.includes(lowerCaseText);
 
-        acc.push({
-          value: event.id,
-          label: (
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
-              <span style={{ flex: '0 1 50%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>
-                {highlightText(event.title, text)}
-              </span>
-              <span style={{ flex: '0 1 50%', color: '#888', textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {highlightText(descriptionSnippet, text)}
-              </span>
-            </div>
-          ),
-          event: event,
-        });
+        if (titleMatch || descMatch || tagMatch || dateMatch) {
+          acc.push({
+            value: event.id,
+            label: (
+              <div style={{ display: 'flex', flexDirection: 'column', padding: '4px 0' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ fontWeight: 'bold' }}>{highlightMatch(event.title, text)}</span>
+                  <span style={{ color: '#888' }}>{eventDate}</span>
+                </div>
+                {descMatch && event.description && (
+                  <div style={{ fontSize: '12px', color: '#555', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {highlightMatch(event.description, text)}
+                  </div>
+                )}
+              </div>
+            ),
+            event: eventToShow,
+          });
+        }
       }
       return acc;
     }, []);
     setSearchOptions(newOptions);
-  }, [events]);
+  }, [allEvents]);
 
 
   const handleSelect = useCallback((value: string, option: any) => {
@@ -165,8 +180,6 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
     setSearchValue('');
     setSearchOptions([]);
   }, [setViewMs]);
-
-  const currentDate = useMemo(() => msToDate(viewMs), [viewMs]);
 
   const handleViewChange = useCallback((newView: View) => {
     if (newView === 'month' || newView === 'week') {
@@ -178,24 +191,34 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
     setViewMs(dateToMs(newDate));
   }, [setViewMs]);
 
-  const showEventModal = useCallback((eventData: Partial<CalendarEvent>) => {
+  const showEventModal = useCallback((eventData: Partial<CalendarEvent>, scope: 'one' | 'all' = 'all') => {
     setModalEventData(eventData);
+    setEditScope(scope);
     setEventModalVisible(true);
   }, []);
 
   const hideEventModal = useCallback(() => {
     setEventModalVisible(false);
     setModalEventData(null);
+    setEditScope('all');
   }, []);
 
   const handleSelectEvent = useCallback((reactEvent: ReactCalendarEvent) => {
-    const event = fromReactEvent(reactEvent);
+    let event = fromReactEvent(reactEvent);
+    // If it's a recurring instance, find the original event to get all data
+    if (event.seriesId) {
+      const masterEvent = allEvents.find(e => e.id === event.seriesId);
+      if (masterEvent) {
+        // Combine master data with instance-specific timing
+        event = { ...masterEvent, startMs: event.startMs, endMs: event.endMs, id: masterEvent.id };
+      }
+    }
     setSelectedEvent(event);
     setEventDetailVisible(true);
-  }, []);
+  }, [allEvents]);
 
-  const handleEditEvent = useCallback((event: CalendarEvent) => {
-    showEventModal(event);
+  const handleEditEvent = useCallback((event: CalendarEvent, scope: 'one' | 'all') => {
+    showEventModal(event, scope);
   }, [showEventModal]);
 
   const eventStyleCache = useMemo(() => new Map<string, any>(), []);
@@ -268,17 +291,19 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
 
   const handleModalSubmit = useCallback(async (eventData: Partial<CalendarEvent>) => {
     try {
-      await saveEvent({ ...modalEventData, ...eventData });
+      // For 'one' scope, we need the original start time to create the exception
+      const eventWithContext = { ...modalEventData, ...eventData };
+      await saveEvent(eventWithContext, editScope);
       hideEventModal();
     } catch (error) {
       console.error('Failed to save event:', error);
       throw error;
     }
-  }, [modalEventData, saveEvent, hideEventModal]);
+  }, [modalEventData, saveEvent, hideEventModal, editScope]);
 
-  const handleDeleteEvent = useCallback(async (eventId: string) => {
+  const handleDeleteEvent = useCallback(async (eventId: string, scope: 'one' | 'all', startMs?: number) => {
     try {
-      await deleteEvent(eventId);
+      await deleteEvent(eventId, scope, startMs);
       setEventDetailVisible(false);
       setSelectedEvent(null);
     } catch (error) {

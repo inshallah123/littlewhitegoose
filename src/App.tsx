@@ -3,11 +3,14 @@ import ConfigProvider from 'antd/es/config-provider';
 import { App as AntdApp } from 'antd';
 import zhCN from 'antd/es/locale/zh_CN';
 import styled, { createGlobalStyle } from 'styled-components';
+import dayjs from 'dayjs';
+import isBetween from 'dayjs/plugin/isBetween';
 import CalendarComponent from './components/Calendar';
 import useCalendarStore from './store/calendarStore';
-import electronDB from './services/electronDB';
 import 'antd/dist/reset.css';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+
+dayjs.extend(isBetween);
 
 const GlobalStyle = createGlobalStyle`
   /* 引入外部字体，并建立优雅的中英文混排字体栈 */
@@ -126,32 +129,19 @@ function App() {
     // Electron event listeners
     if (!window.electronAPI) return;
 
-    const handleNewEvent = () => {
-      if (calendarRef.current?.handleMenuNewEvent) {
-        calendarRef.current.handleMenuNewEvent();
-      }
-    };
+    const onNewEvent = () => calendarRef.current?.handleMenuNewEvent?.();
+    const onChangeView = (view: string) => calendarRef.current?.handleMenuViewChange?.(view);
+    const onEventsCleared = () => clearAllEvents();
 
-    const handleViewChange = (view: string) => {
-      if (calendarRef.current?.handleMenuViewChange) {
-        calendarRef.current.handleMenuViewChange(view);
-      }
-    };
+    const unregisterOnNewEvent = window.electronAPI.onNewEvent(onNewEvent);
+    const unregisterOnChangeView = window.electronAPI.onChangeView((event, view) => onChangeView(view));
+    const unregisterOnEventsCleared = window.electronAPI.onEventsCleared(onEventsCleared);
 
-    const handleEventsCleared = () => {
-      clearAllEvents();
-    };
-
-    const cleanupListeners = electronDB.setupMenuListeners(
-      handleNewEvent,
-      handleViewChange,
-      handleEventsCleared
-    );
 
     return () => {
-      if (typeof cleanupListeners === 'function') {
-        cleanupListeners();
-      }
+      unregisterOnNewEvent?.();
+      unregisterOnChangeView?.();
+      unregisterOnEventsCleared?.();
     };
   }, [clearAllEvents]);
 
