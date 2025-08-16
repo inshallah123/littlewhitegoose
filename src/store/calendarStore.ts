@@ -85,6 +85,11 @@ const useCalendarStore = create<CalendarStoreInternal>((set, get) => ({
     return false;
   },
 
+  // Action to clear all events from the state
+  clearAllEvents: () => {
+    set({ events: [] });
+  },
+
   setSelectedMs: (ms) => {
     set({ selectedMs: ms });
   },

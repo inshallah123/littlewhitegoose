@@ -67,10 +67,6 @@ const StyledSelect = styled(Select)`
 `;
 
 const timeSlots = [
-  { label: '00:00 - 02:00', start: 0, end: 2 },
-  { label: '02:00 - 04:00', start: 2, end: 4 },
-  { label: '04:00 - 06:00', start: 4, end: 6 },
-  { label: '06:00 - 08:00', start: 6, end: 8 },
   { label: '08:00 - 10:00', start: 8, end: 10 },
   { label: '10:00 - 12:00', start: 10, end: 12 },
   { label: '12:00 - 14:00', start: 12, end: 14 },
@@ -79,6 +75,10 @@ const timeSlots = [
   { label: '18:00 - 20:00', start: 18, end: 20 },
   { label: '20:00 - 22:00', start: 20, end: 22 },
   { label: '22:00 - 24:00', start: 22, end: 24 },
+  { label: '00:00 - 02:00', start: 0, end: 2 },
+  { label: '02:00 - 04:00', start: 2, end: 4 },
+  { label: '04:00 - 06:00', start: 4, end: 6 },
+  { label: '06:00 - 08:00', start: 6, end: 8 },
 ];
 
 const TimeSlotSelector: React.FC<TimeSlotSelectorProps> = ({

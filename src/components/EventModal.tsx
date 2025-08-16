@@ -3,6 +3,8 @@ import React, { useState, useCallback, useMemo, memo } from 'react';
 import Form from 'antd/es/form';
 import Input from 'antd/es/input';
 import Switch from 'antd/es/switch';
+import Select from 'antd/es/select';
+import Tag from 'antd/es/tag';
 import { App } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import { CalendarEvent, msToDate, dateToMs } from '../types';
@@ -18,6 +20,13 @@ interface EventModalProps {
   event?: Partial<CalendarEvent> | null;
   selectedDate?: Date;
 }
+
+const presetTags = [
+  { value: '私', color: 'magenta' },
+  { value: '工作', color: 'blue' },
+  { value: '班次', color: 'purple' },
+  { value: 'balance', color: 'green' },
+];
 
 const EventModal: React.FC<EventModalProps> = ({
   visible,
@@ -44,17 +53,22 @@ const EventModal: React.FC<EventModalProps> = ({
           start: dayjs(startDate), 
           end: dayjs(endDate) 
         },
-        isAllDay: event.isAllDay || false
+        isAllDay: event.isAllDay || false,
+        tags: event.tags || []
       };
     }
+
+    const defaultStartDate = dayjs(selectedDate || new Date()).hour(8).minute(0).second(0);
+    const defaultEndDate = dayjs(selectedDate || new Date()).hour(10).minute(0).second(0);
 
     return {
       title: '',
       description: '',
-      timeSlot: undefined,
-      isAllDay: false
+      timeSlot: { start: defaultStartDate, end: defaultEndDate },
+      isAllDay: false,
+      tags: []
     };
-  }, [event]);
+  }, [event, selectedDate]);
 
   const currentDate = useMemo(() => {
     if (initialValues.timeSlot?.start) {
@@ -78,12 +92,15 @@ const EventModal: React.FC<EventModalProps> = ({
         startTime = selectedDay.startOf('day').toDate();
         endTime = selectedDay.endOf('day').toDate();
       } else {
-        if (!values.timeSlot) {
-          message.error('请选择时间段');
-          return;
+        if (values.timeSlot) {
+          startTime = values.timeSlot.start.toDate();
+          endTime = values.timeSlot.end.toDate();
+        } else {
+          // Linus 优化：如果用户未选择，则默认为 8:00-10:00
+          const selectedDay = dayjs(currentDate);
+          startTime = selectedDay.hour(8).minute(0).second(0).toDate();
+          endTime = selectedDay.hour(10).minute(0).second(0).toDate();
         }
-        startTime = values.timeSlot.start.toDate();
-        endTime = values.timeSlot.end.toDate();
       }
       
       const eventData: Partial<CalendarEvent> = {
@@ -93,7 +110,8 @@ const EventModal: React.FC<EventModalProps> = ({
         endMs: dateToMs(endTime),
         description: values.description?.trim() || '',
         color: event?.color || '#1890ff',
-        isAllDay: values.isAllDay || false
+        isAllDay: values.isAllDay || false,
+        tags: values.tags || []
       };
 
       await onSubmit(eventData);
@@ -201,6 +219,23 @@ const EventModal: React.FC<EventModalProps> = ({
         </Form.Item>
 
         <Form.Item
+          name="tags"
+          label="🏷️ 标签"
+        >
+          <Select
+            mode="tags"
+            placeholder="添加标签以分类事件..."
+            style={{ width: '100%' }}
+          >
+            {presetTags.map(tag => (
+              <Select.Option key={tag.value} value={tag.value}>
+                <Tag color={tag.color}>{tag.value}</Tag>
+              </Select.Option>
+            ))}
+          </Select>
+        </Form.Item>
+
+        <Form.Item
           name="isAllDay"
           label="🌅 全天事件"
           valuePropName="checked"
@@ -218,7 +253,6 @@ const EventModal: React.FC<EventModalProps> = ({
               <Form.Item
                 name="timeSlot"
                 label="⏰ 时间段"
-                rules={[{ required: true, message: '请选择时间段' }]}
               >
                 <TimeSlotSelector
                   date={currentDate}

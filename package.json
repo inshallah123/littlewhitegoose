@@ -10,7 +10,7 @@
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "electron": "electron .",
-    "electron-dev": "concurrently --kill-others --names \"REACT,ELECTRON\" -c \"blue,green\" \"cross-env PORT=3002 BROWSER=none npm run start\" \"wait-on http://localhost:3002 && electron .\"",
+    "electron-dev": "concurrently --kill-others --names \"REACT,ELECTRON\" -c \"blue,green\" \"cross-env PORT=3003 BROWSER=none npm run start\" \"wait-on http://localhost:3003 && electron .\"",
     "electron-dev-light": "cross-env NODE_ENV=development PORT=3002 BROWSER=none react-scripts start & wait-on http://localhost:3002 && electron .",
     "start-minimal": "cross-env NODE_ENV=development PORT=3002 BROWSER=none GENERATE_SOURCEMAP=false FAST_REFRESH=false react-scripts start",
     "dev-fixed": "start /B cross-env PORT=3002 BROWSER=none GENERATE_SOURCEMAP=false npm run start && wait-on http://localhost:3002 && electron .",

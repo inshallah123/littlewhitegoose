@@ -6,12 +6,20 @@ import Popconfirm from 'antd/es/popconfirm';
 import Space from 'antd/es/space';
 import Typography from 'antd/es/typography';
 import Divider from 'antd/es/divider';
+import Tag from 'antd/es/tag';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import dayjs from 'dayjs';
 import { CalendarEvent, msToDate } from '../types';
 
 const { Text, Title } = Typography;
+
+const TAG_COLORS: { [key: string]: string } = {
+  '私': '#eb2f96',
+  '工作': '#1890ff',
+  '班次': '#722ed1',
+  'balance': '#52c41a',
+};
 
 const StyledModal = styled(Modal)`
   .ant-modal-content {
@@ -247,6 +255,21 @@ const EventDetail: React.FC<EventDetailProps> = ({
             {formatEventTime(msToDate(event.startMs), msToDate(event.endMs), event.isAllDay)}
           </div>
         </div>
+
+        {event.tags && event.tags.length > 0 && (
+          <div className="info-section">
+            <div className="info-label">
+              🏷️ 标签
+            </div>
+            <Space size={[0, 8]} wrap>
+              {event.tags.map(tag => (
+                <Tag key={tag} color={TAG_COLORS[tag] || 'default'}>
+                  {tag}
+                </Tag>
+              ))}
+            </Space>
+          </div>
+        )}
 
         {event.description && (
           <div className="info-section">

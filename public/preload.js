@@ -25,4 +25,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('change-view', subscription);
     return () => ipcRenderer.removeListener('change-view', subscription);
   },
+  onEventsCleared: (callback) => {
+    const subscription = (event, ...args) => callback(...args);
+    ipcRenderer.on('events-cleared', subscription);
+    return () => ipcRenderer.removeListener('events-cleared', subscription);
+  },
 });

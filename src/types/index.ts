@@ -6,6 +6,7 @@ export interface CalendarEvent {
   description?: string;
   color?: string;
   isAllDay?: boolean;
+  tags?: string[];
 }
 
 // Legacy interface for react-big-calendar compatibility
@@ -17,6 +18,7 @@ export interface ReactCalendarEvent {
   description?: string;
   color?: string;
   isAllDay?: boolean;
+  tags?: string[];
 }
 
 export interface CalendarStore {
@@ -47,6 +49,7 @@ export interface EventRow {
   is_all_day: number;
   created_at: number;
   updated_at: number;
+  tags: string | null;
 }
 
 export interface ReminderRow {

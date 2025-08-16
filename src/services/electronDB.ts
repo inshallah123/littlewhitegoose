@@ -50,6 +50,7 @@ class ElectronDatabaseService {
       endMs: event.end_time * 1000,
       color: event.color || '#1890ff',
       isAllDay: Boolean(event.is_all_day),
+      tags: event.tags ? JSON.parse(event.tags) : [],
       reminders: reminderMap.get(event.id) || undefined,
     }));
   }
@@ -96,12 +97,30 @@ class ElectronDatabaseService {
     }
   }
 
-  // Setup menu event listeners
-  setupMenuListeners(onNewEvent: () => void, onChangeView: (view: string) => void) {
-    if (!this.hasElectron) return;
+  // Setup menu event listeners and return a cleanup function
+  setupMenuListeners(
+    onNewEvent: () => void, 
+    onChangeView: (view: string) => void,
+    onEventsCleared: () => void
+  ): () => void {
+    if (!this.hasElectron) {
+      return () => {}; // Return an empty function if not in Electron
+    }
 
-    window.electronAPI!.onNewEvent(onNewEvent);
-    window.electronAPI!.onChangeView((event, view) => onChangeView(view));
+    const cleanups = [
+      window.electronAPI!.onNewEvent(onNewEvent),
+      window.electronAPI!.onChangeView((view) => onChangeView(view)),
+      window.electronAPI!.onEventsCleared(onEventsCleared)
+    ];
+
+    // Return a function that calls all cleanup functions
+    return () => {
+      cleanups.forEach(cleanup => {
+        if (typeof cleanup === 'function') {
+          cleanup();
+        }
+      });
+    };
   }
 }
 

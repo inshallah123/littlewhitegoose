@@ -28,6 +28,12 @@ class DatabaseService {
       )
     `);
 
+    // Add tags column if it doesn't exist (for migration)
+    const columns = this.db.prepare("PRAGMA table_info(events)").all();
+    if (!columns.some(col => col.name === 'tags')) {
+      this.db.exec('ALTER TABLE events ADD COLUMN tags TEXT');
+    }
+
     // Create reminders table
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS reminders (
@@ -52,7 +58,7 @@ class DatabaseService {
     const eventsStmt = this.db.prepare(`
       SELECT 
         id, title, description, start_time, end_time, color, is_all_day,
-        created_at, updated_at
+        created_at, updated_at, tags
       FROM events 
       ORDER BY start_time ASC
     `);
@@ -114,8 +120,8 @@ class DatabaseService {
     const stmt = this.db.prepare(`
       INSERT INTO events (
         id, title, description, start_time, end_time, color, is_all_day, 
-        created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        created_at, updated_at, tags
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const startTime = event.startMs ? Math.floor(event.startMs / 1000) : Math.floor(new Date(event.start).getTime() / 1000);
@@ -130,7 +136,8 @@ class DatabaseService {
       event.color || '#1890ff',
       event.isAllDay ? 1 : 0,
       now,
-      now
+      now,
+      event.tags ? JSON.stringify(event.tags) : null
     );
 
     // Add reminders if any
@@ -178,6 +185,10 @@ class DatabaseService {
       fields.push('is_all_day = ?');
       values.push(updates.isAllDay ? 1 : 0);
     }
+    if (updates.tags !== undefined) {
+      fields.push('tags = ?');
+      values.push(JSON.stringify(updates.tags));
+    }
 
     if (fields.length === 0) return this.getEventById(id);
 
@@ -207,6 +218,14 @@ class DatabaseService {
   deleteEvent(id) {
     const stmt = this.db.prepare('DELETE FROM events WHERE id = ?');
     const result = stmt.run(id);
+    return result.changes > 0;
+  }
+
+  deleteAllEvents() {
+    const stmt = this.db.prepare('DELETE FROM events');
+    const result = stmt.run();
+    // Also clear reminders to avoid orphaned data
+    this.db.exec('DELETE FROM reminders');
     return result.changes > 0;
   }
 
@@ -242,6 +261,7 @@ class DatabaseService {
       endMs: row.end_time * 1000,      // Convert seconds to milliseconds
       color: row.color || '#1890ff',
       isAllDay: Boolean(row.is_all_day),
+      tags: row.tags ? JSON.parse(row.tags) : [],
       reminders: reminders && reminders.length > 0 ? reminders : undefined,
     };
   }

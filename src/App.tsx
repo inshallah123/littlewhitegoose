@@ -5,6 +5,7 @@ import zhCN from 'antd/es/locale/zh_CN';
 import styled, { createGlobalStyle } from 'styled-components';
 import CalendarComponent from './components/Calendar';
 import useCalendarStore from './store/calendarStore';
+import electronDB from './services/electronDB';
 import 'antd/dist/reset.css';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
@@ -112,6 +113,7 @@ const Header = styled.div`
 function App() {
   const calendarRef = useRef<any>(null);
   const cleanup = useCalendarStore(state => state.cleanup);
+  const clearAllEvents = useCalendarStore(state => state.clearAllEvents);
 
   useEffect(() => {
     // Global cleanup on unmount
@@ -121,7 +123,7 @@ function App() {
   }, [cleanup]);
 
   useEffect(() => {
-    // Electron event listeners - Linus式优化：检查返回值类型
+    // Electron event listeners
     if (!window.electronAPI) return;
 
     const handleNewEvent = () => {
@@ -130,25 +132,28 @@ function App() {
       }
     };
 
-    const handleViewChange = (_event: any, view: string) => {
+    const handleViewChange = (view: string) => {
       if (calendarRef.current?.handleMenuViewChange) {
         calendarRef.current.handleMenuViewChange(view);
       }
     };
 
-    const removeNewEventListener = window.electronAPI.onNewEvent(handleNewEvent);
-    const removeViewChangeListener = window.electronAPI.onChangeView(handleViewChange);
+    const handleEventsCleared = () => {
+      clearAllEvents();
+    };
+
+    const cleanupListeners = electronDB.setupMenuListeners(
+      handleNewEvent,
+      handleViewChange,
+      handleEventsCleared
+    );
 
     return () => {
-      // 防御性编程 - 检查是否为函数
-      if (typeof removeNewEventListener === 'function') {
-        removeNewEventListener();
-      }
-      if (typeof removeViewChangeListener === 'function') {
-        removeViewChangeListener();
+      if (typeof cleanupListeners === 'function') {
+        cleanupListeners();
       }
     };
-  }, []);
+  }, [clearAllEvents]);
 
   return (
     <ConfigProvider

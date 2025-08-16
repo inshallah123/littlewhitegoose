@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, forwardRef, useImperativeHandle, useMemo, useState, memo } from 'react';
+import React, { useCallback, useEffect, forwardRef, useImperativeHandle, useMemo, useState, memo, ForwardedRef } from 'react';
 import { Calendar as BigCalendar, dayjsLocalizer, View } from 'react-big-calendar';
 import dayjs from 'dayjs';
 import 'dayjs/locale/zh-cn';
@@ -7,7 +7,7 @@ import timezone from 'dayjs/plugin/timezone';
 import Spin from 'antd/es/spin';
 import { LoadingOutlined } from '@ant-design/icons';
 import useCalendarStore from '../store/calendarStore';
-import { CalendarEvent, ReactCalendarEvent, toReactEvent, fromReactEvent, msToDate, dateToMs, nowMs } from '../types';
+import { CalendarEvent, ReactCalendarEvent, toReactEvent, fromReactEvent, msToDate, dateToMs } from '../types';
 import EventModal from './EventModal';
 import EventDetail from './EventDetail';
 import CalendarToolbar from './CalendarToolbar';
@@ -21,7 +21,6 @@ dayjs.extend(timezone);
 
 const localizer = dayjsLocalizer(dayjs);
 
-// Linus式优化：将messages移到组件外部，消除重复创建
 const CALENDAR_MESSAGES = {
   next: "下一个",
   previous: "上一个",
@@ -36,7 +35,6 @@ const CALENDAR_MESSAGES = {
   showMore: (total: number) => `+ 查看更多 (${total})`
 };
 
-// 预定义样式对象，避免运行时创建
 const SELECTED_DAY_STYLE = {
   backgroundColor: '#bae7ff',
   border: '2px solid #1890ff',
@@ -44,11 +42,19 @@ const SELECTED_DAY_STYLE = {
 
 const EMPTY_STYLE = {};
 
+const TAG_COLORS: { [key: string]: string } = {
+  '私': '#eb2f96',
+  '工作': '#1890ff',
+  '班次': '#722ed1',
+  'balance': '#52c41a',
+};
+const DEFAULT_EVENT_COLOR = '#1890ff';
 
-// Linus式优化：使用更细粒度的状态选择器
-const Calendar = forwardRef<any, {}>((props, ref) => {
+interface CalendarProps {}
+
+const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
   useRenderProfiler('Calendar');
-  // 消除不必要的重渲染 - 只订阅需要的状态
+  
   const events = useCalendarStore(state => state.events);
   const view = useCalendarStore(state => state.view);
   const isLoading = useCalendarStore(state => state.isLoading);
@@ -61,21 +67,104 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
   const setSelectedMs = useCalendarStore(state => state.setSelectedMs);
   const setViewMs = useCalendarStore(state => state.setViewMs);
   
-  // Modal states - simplified
   const [eventModalVisible, setEventModalVisible] = useState(false);
   const [eventDetailVisible, setEventDetailVisible] = useState(false);
   const [modalEventData, setModalEventData] = useState<Partial<CalendarEvent> | null>(null);
   const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
+  
+  // State for the new AutoComplete search
+  const [searchValue, setSearchValue] = useState('');
+  const [searchOptions, setSearchOptions] = useState<any[]>([]);
 
-  // Load events on component mount
   useEffect(() => {
     loadEvents();
   }, [loadEvents]);
 
+  // The calendar now always displays all events. Filtering is replaced by navigation.
   const reactEvents = useMemo(() => 
-    events.map(toReactEvent), 
+    events.map(toReactEvent),
     [events]
   );
+
+  const handleSearch = useCallback((text: string) => {
+    setSearchValue(text);
+    if (!text) {
+      setSearchOptions([]);
+      return;
+    }
+
+    const lowerCaseText = text.toLowerCase();
+
+    // Helper to escape regex special characters
+    const escapeRegExp = (str: string) => {
+      return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    };
+
+    // Helper to highlight text
+    const highlightText = (str: string, highlight: string) => {
+      if (!highlight.trim() || !str) {
+        return str;
+      }
+      const regex = new RegExp(`(${escapeRegExp(highlight)})`, 'gi');
+      const parts = str.split(regex);
+      return parts.map((part, i) =>
+        part.toLowerCase() === highlight.toLowerCase() ? (
+          <span key={i} style={{ color: '#1890ff', fontWeight: 'bold' }}>
+            {part}
+          </span>
+        ) : (
+          part
+        )
+      );
+    };
+
+    const newOptions = events.reduce<any[]>((acc, event) => {
+      const eventDate = dayjs(msToDate(event.startMs)).format('YYYY-MM-DD');
+      const titleMatch = event.title.toLowerCase().includes(lowerCaseText);
+      const descMatch = event.description && event.description.toLowerCase().includes(lowerCaseText);
+      const tagMatch = event.tags && event.tags.some(tag => tag.toLowerCase().includes(lowerCaseText));
+      const dateMatch = eventDate.includes(lowerCaseText);
+
+      if (titleMatch || descMatch || tagMatch || dateMatch) {
+        let descriptionSnippet = '';
+        if (event.description) {
+          if (descMatch) {
+            // Find the sentence with the keyword
+            const sentences = event.description.split(/(?<=[.!?])\s+/);
+            const matchedSentence = sentences.find(s => s.toLowerCase().includes(lowerCaseText));
+            descriptionSnippet = matchedSentence || (event.description.substring(0, 40) + '...');
+          } else {
+            // Show the beginning of the first sentence
+            descriptionSnippet = event.description.substring(0, 40) + '...';
+          }
+        }
+
+        acc.push({
+          value: event.id,
+          label: (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <span style={{ flex: '0 1 50%', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', textAlign: 'left' }}>
+                {highlightText(event.title, text)}
+              </span>
+              <span style={{ flex: '0 1 50%', color: '#888', textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                {highlightText(descriptionSnippet, text)}
+              </span>
+            </div>
+          ),
+          event: event,
+        });
+      }
+      return acc;
+    }, []);
+    setSearchOptions(newOptions);
+  }, [events]);
+
+
+  const handleSelect = useCallback((value: string, option: any) => {
+    setViewMs(option.event.startMs);
+    setSearchValue('');
+    setSearchOptions([]);
+  }, [setViewMs]);
 
   const currentDate = useMemo(() => msToDate(viewMs), [viewMs]);
 
@@ -89,7 +178,6 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
     setViewMs(dateToMs(newDate));
   }, [setViewMs]);
 
-  // Unified event modal handlers
   const showEventModal = useCallback((eventData: Partial<CalendarEvent>) => {
     setModalEventData(eventData);
     setEventModalVisible(true);
@@ -99,7 +187,6 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
     setEventModalVisible(false);
     setModalEventData(null);
   }, []);
-
 
   const handleSelectEvent = useCallback((reactEvent: ReactCalendarEvent) => {
     const event = fromReactEvent(reactEvent);
@@ -111,26 +198,32 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
     showEventModal(event);
   }, [showEventModal]);
 
-  // Linus式优化：预定义样式对象，避免重复创建
   const eventStyleCache = useMemo(() => new Map<string, any>(), []);
   
   const eventStyleGetter = useCallback((reactEvent: ReactCalendarEvent) => {
     const event = fromReactEvent(reactEvent);
-    const color = event.color || '#1890ff';
+    let color = DEFAULT_EVENT_COLOR;
+    const noTagColor = '#FFF5F7'; // 更淡的粉色
+
+    if (event.tags && event.tags.length > 0) {
+      color = TAG_COLORS[event.tags[0]] || DEFAULT_EVENT_COLOR;
+    } else {
+      // Linus 优化：为无标签事件设置更淡的粉色
+      color = noTagColor; 
+    }
     
     if (!eventStyleCache.has(color)) {
       eventStyleCache.set(color, {
         style: {
           backgroundColor: color,
           borderRadius: '4px',
-          opacity: 0.8,
-          color: 'white',
-          border: 'none',
+          opacity: 0.9, // 稍微调高不透明度，让颜色更明显一点
+          color: color === noTagColor ? '#595959' : 'white', // 淡粉色背景配深色文字
+          border: '1px solid #f0f0f0', // 添加一个非常浅的边框以示区分
           display: 'block',
         },
       });
     }
-    
     return eventStyleCache.get(color);
   }, [eventStyleCache]);
 
@@ -142,7 +235,6 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
     return d.getTime();
   }, [selectedMs]);
 
-  // Linus式优化：预定义返回对象
   const SELECTED_DAY_PROPS = useMemo(() => ({
     className: 'selected-date-bg',
     style: SELECTED_DAY_STYLE
@@ -153,22 +245,16 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
     return dayStart === selectedDayStart ? SELECTED_DAY_PROPS : EMPTY_STYLE;
   }, [selectedDayStart, SELECTED_DAY_PROPS]);
 
-  // Linus式改进：消除嵌套，单一职责  
   const createDefaultEvent = useCallback((startDate: Date): Partial<CalendarEvent> => {
-    return {
-      title: '',
-      color: '#1890ff'
-    };
+    return { title: '', color: '#1890ff', tags: [] };
   }, []);
 
   const handleAddEvent = useCallback(() => {
-    const eventData = createDefaultEvent(selectedDate);
-    showEventModal(eventData);
+    showEventModal(createDefaultEvent(selectedDate));
   }, [selectedDate, createDefaultEvent, showEventModal]);
 
   const handleSlotDoubleClick = useCallback((start: Date) => {
-    const eventData = createDefaultEvent(start);
-    showEventModal(eventData);
+    showEventModal(createDefaultEvent(start));
   }, [createDefaultEvent, showEventModal]);
 
   const handleSlotSelect = useCallback((start: Date) => {
@@ -176,20 +262,13 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
   }, [setSelectedMs]);
 
   const handleSelectSlot = useCallback(({ start, action }: { start: Date; end: Date; slots: Date[]; action: string }) => {
-    if (action === 'doubleClick') {
-      handleSlotDoubleClick(start);
-    } else {
-      handleSlotSelect(start);
-    }
+    if (action === 'doubleClick') handleSlotDoubleClick(start);
+    else handleSlotSelect(start);
   }, [handleSlotDoubleClick, handleSlotSelect]);
 
-  // Unified event handling - no special cases
   const handleModalSubmit = useCallback(async (eventData: Partial<CalendarEvent>) => {
     try {
-      await saveEvent({
-        ...modalEventData,
-        ...eventData
-      });
+      await saveEvent({ ...modalEventData, ...eventData });
       hideEventModal();
     } catch (error) {
       console.error('Failed to save event:', error);
@@ -208,7 +287,6 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
     }
   }, [deleteEvent]);
 
-  // Expose methods to parent component
   useImperativeHandle(ref, () => ({
     handleMenuNewEvent: handleAddEvent,
     handleMenuViewChange: (viewType: string) => {
@@ -230,7 +308,10 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
         isLoading={isLoading}
         onAddEvent={handleAddEvent}
         onViewChange={setView}
-        selectedDate={selectedDate}
+        searchValue={searchValue}
+        searchOptions={searchOptions}
+        onSearch={handleSearch}
+        onSelect={handleSelect}
       />
       <div style={{ position: 'relative' }}>
         {isLoading && (
@@ -251,6 +332,7 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
           onNavigate={handleNavigate}
           selectable
           onSelectEvent={handleSelectEvent}
+  
           onDoubleClickEvent={handleSelectEvent}
           eventPropGetter={eventStyleGetter}
           dayPropGetter={dayPropGetter}
@@ -260,9 +342,7 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
           timeslots={2}
           onSelectSlot={handleSelectSlot}
           messages={CALENDAR_MESSAGES}
-          formats={{
-            dateFormat: 'D',
-          }}
+          formats={{ dateFormat: 'D' }}
         />
       </div>
       
@@ -283,9 +363,9 @@ const Calendar = forwardRef<any, {}>((props, ref) => {
       />
     </div>
   );
-});
+};
 
+const Calendar = forwardRef(CalendarComponent);
 Calendar.displayName = 'Calendar';
 
-// Memoize the entire component to prevent unnecessary re-renders
 export default memo(Calendar);

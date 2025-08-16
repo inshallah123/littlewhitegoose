@@ -2,6 +2,7 @@ import React, { memo } from 'react';
 // Linus式优化：按需引入，减少bundle体积
 import Button from 'antd/es/button';
 import Space from 'antd/es/space';
+import AutoComplete from 'antd/es/auto-complete';
 import { PlusOutlined, LoadingOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 
@@ -21,6 +22,11 @@ const ToolbarContainer = styled.div`
 
 const LeftSection = styled(Space)`
   align-items: center;
+  flex-grow: 1;
+
+  .ant-space-item:last-child {
+    flex-grow: 1;
+  }
 `;
 
 const NewEventButton = styled(Button)`
@@ -93,7 +99,10 @@ interface CalendarToolbarProps {
   isLoading: boolean;
   onAddEvent: () => void;
   onViewChange: (view: 'month' | 'week') => void;
-  selectedDate: Date;
+  searchValue: string;
+  searchOptions: { value: string; label: React.ReactNode; event: any }[];
+  onSearch: (query: string) => void;
+  onSelect: (value: string, option: any) => void;
 }
 
 const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
@@ -101,7 +110,10 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   isLoading,
   onAddEvent,
   onViewChange,
-  selectedDate
+  searchValue,
+  searchOptions,
+  onSearch,
+  onSelect
 }) => {
   return (
     <ToolbarContainer>
@@ -114,6 +126,15 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
         >
           ✨ 新建事件
         </NewEventButton>
+        <AutoComplete
+          options={searchOptions}
+          value={searchValue}
+          onSearch={onSearch}
+          onSelect={onSelect}
+          style={{ width: '100%', maxWidth: 400 }}
+          placeholder="搜索并跳转到事件..."
+          allowClear
+        />
       </LeftSection>
 
       <ViewButtonGroup size={8}>

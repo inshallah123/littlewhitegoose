@@ -65,6 +65,32 @@ function createMenu() {
         },
         { type: 'separator' },
         {
+          label: '清除所有事件',
+          accelerator: 'CmdOrCtrl+Shift+D',
+          click: () => {
+            // Show confirmation dialog before deleting
+            require('electron').dialog.showMessageBox(mainWindow, {
+              type: 'warning',
+              title: '确认清除',
+              message: '您确定要删除所有事件吗？此操作不可撤销。',
+              buttons: ['确定删除', '取消'],
+              defaultId: 1, // Default to "Cancel"
+              cancelId: 1
+            }).then(result => {
+              if (result.response === 0) { // If "确定删除" is clicked
+                try {
+                  dbService.deleteAllEvents();
+                  // Notify renderer to update its state
+                  mainWindow.webContents.send('events-cleared');
+                } catch (error) {
+                  console.error('Failed to delete all events:', error);
+                }
+              }
+            });
+          }
+        },
+        { type: 'separator' },
+        {
           label: '退出',
           accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
           click: () => {
