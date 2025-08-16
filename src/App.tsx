@@ -115,8 +115,48 @@ const Header = styled.div`
 
 function App() {
   const calendarRef = useRef<any>(null);
+  const viewMs = useCalendarStore(state => state.viewMs);
+  const setViewMs = useCalendarStore(state => state.setViewMs);
   const cleanup = useCalendarStore(state => state.cleanup);
   const clearAllEvents = useCalendarStore(state => state.clearAllEvents);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const currentDate = new Date(viewMs);
+      let newDate: Date | null = null;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+          newDate = new Date(currentDate.setMonth(currentDate.getMonth() - 1));
+          break;
+        case 'ArrowRight':
+          newDate = new Date(currentDate.setMonth(currentDate.getMonth() + 1));
+          break;
+        case 'ArrowUp':
+          newDate = new Date(currentDate.setFullYear(currentDate.getFullYear() - 1));
+          break;
+        case 'ArrowDown':
+          newDate = new Date(currentDate.setFullYear(currentDate.getFullYear() + 1));
+          break;
+        case ' ': // Spacebar
+          newDate = new Date(); // Go to today's date
+          break;
+        default:
+          break;
+      }
+
+      if (newDate) {
+        e.preventDefault();
+        setViewMs(newDate.getTime());
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [viewMs]);
+
 
   useEffect(() => {
     // Global cleanup on unmount

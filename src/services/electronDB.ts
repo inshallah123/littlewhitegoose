@@ -52,6 +52,9 @@ class ElectronDatabaseService {
       isAllDay: Boolean(event.is_all_day),
       tags: event.tags ? JSON.parse(event.tags) : [],
       reminders: reminderMap.get(event.id) || undefined,
+      recurrenceRule: event.recurrence_rule ? JSON.parse(event.recurrence_rule) : undefined,
+      exceptionDates: event.exception_dates ? JSON.parse(event.exception_dates) : undefined,
+      seriesId: event.series_id || undefined,
     }));
   }
 
@@ -100,8 +103,7 @@ class ElectronDatabaseService {
   // Setup menu event listeners and return a cleanup function
   setupMenuListeners(
     onNewEvent: () => void, 
-    onChangeView: (view: string) => void,
-    onEventsCleared: () => void
+    onChangeView: (view: string) => void
   ): () => void {
     if (!this.hasElectron) {
       return () => {}; // Return an empty function if not in Electron
@@ -109,8 +111,7 @@ class ElectronDatabaseService {
 
     const cleanups = [
       window.electronAPI!.onNewEvent(onNewEvent),
-      window.electronAPI!.onChangeView((view) => onChangeView(view)),
-      window.electronAPI!.onEventsCleared(onEventsCleared)
+      window.electronAPI!.onChangeView((event, view) => onChangeView(view))
     ];
 
     // Return a function that calls all cleanup functions

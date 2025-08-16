@@ -28,11 +28,23 @@ class DatabaseService {
       )
     `);
 
-    // Add tags column if it doesn't exist (for migration)
+    // --- MIGRATIONS ---
     const columns = this.db.prepare("PRAGMA table_info(events)").all();
-    if (!columns.some(col => col.name === 'tags')) {
+    const columnNames = columns.map(col => col.name);
+
+    if (!columnNames.includes('tags')) {
       this.db.exec('ALTER TABLE events ADD COLUMN tags TEXT');
     }
+    if (!columnNames.includes('recurrence_rule')) {
+      this.db.exec('ALTER TABLE events ADD COLUMN recurrence_rule TEXT');
+    }
+    if (!columnNames.includes('exception_dates')) {
+      this.db.exec('ALTER TABLE events ADD COLUMN exception_dates TEXT');
+    }
+    if (!columnNames.includes('series_id')) {
+      this.db.exec('ALTER TABLE events ADD COLUMN series_id TEXT');
+    }
+    // --- END MIGRATIONS ---
 
     // Create reminders table
     this.db.exec(`
@@ -58,7 +70,7 @@ class DatabaseService {
     const eventsStmt = this.db.prepare(`
       SELECT 
         id, title, description, start_time, end_time, color, is_all_day,
-        created_at, updated_at, tags
+        created_at, updated_at, tags, recurrence_rule, exception_dates, series_id
       FROM events 
       ORDER BY start_time ASC
     `);
@@ -120,8 +132,8 @@ class DatabaseService {
     const stmt = this.db.prepare(`
       INSERT INTO events (
         id, title, description, start_time, end_time, color, is_all_day, 
-        created_at, updated_at, tags
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        created_at, updated_at, tags, recurrence_rule, exception_dates, series_id
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const startTime = event.startMs ? Math.floor(event.startMs / 1000) : Math.floor(new Date(event.start).getTime() / 1000);
@@ -137,7 +149,10 @@ class DatabaseService {
       event.isAllDay ? 1 : 0,
       now,
       now,
-      event.tags ? JSON.stringify(event.tags) : null
+      event.tags ? JSON.stringify(event.tags) : null,
+      event.recurrenceRule ? JSON.stringify(event.recurrenceRule) : null,
+      event.exceptionDates ? JSON.stringify(event.exceptionDates) : null,
+      event.seriesId || null
     );
 
     // Add reminders if any
@@ -188,6 +203,18 @@ class DatabaseService {
     if (updates.tags !== undefined) {
       fields.push('tags = ?');
       values.push(JSON.stringify(updates.tags));
+    }
+    if (updates.recurrenceRule !== undefined) {
+      fields.push('recurrence_rule = ?');
+      values.push(updates.recurrenceRule ? JSON.stringify(updates.recurrenceRule) : null);
+    }
+    if (updates.exceptionDates !== undefined) {
+      fields.push('exception_dates = ?');
+      values.push(updates.exceptionDates ? JSON.stringify(updates.exceptionDates) : null);
+    }
+    if (updates.seriesId !== undefined) {
+      fields.push('series_id = ?');
+      values.push(updates.seriesId);
     }
 
     if (fields.length === 0) return this.getEventById(id);
@@ -263,6 +290,9 @@ class DatabaseService {
       isAllDay: Boolean(row.is_all_day),
       tags: row.tags ? JSON.parse(row.tags) : [],
       reminders: reminders && reminders.length > 0 ? reminders : undefined,
+      recurrenceRule: row.recurrence_rule ? JSON.parse(row.recurrence_rule) : undefined,
+      exceptionDates: row.exception_dates ? JSON.parse(row.exception_dates) : undefined,
+      seriesId: row.series_id || undefined,
     };
   }
 

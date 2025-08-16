@@ -1,10 +1,15 @@
 import { create } from 'zustand';
 import { CalendarEvent, CalendarStore, nowMs } from '../types';
 import electronDB from '../services/electronDB';
+import { generateRecurringEvents } from '../utils/recurrence';
+import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 
 // Linus式改进：AbortController作为状态的一部分管理
 interface CalendarStoreInternal extends CalendarStore {
   _abortController: AbortController | null;
+  getEventsInView: (viewStartDate: Date, viewEndDate: Date) => CalendarEvent[];
+  deleteEvent: (id: string, scope: 'one' | 'all', startMs?: number) => Promise<boolean>;
+  saveEvent: (event: Partial<CalendarEvent>, scope?: 'one' | 'all') => Promise<CalendarEvent | null>;
 }
 
 const useCalendarStore = create<CalendarStoreInternal>((set, get) => ({
@@ -14,6 +19,30 @@ const useCalendarStore = create<CalendarStoreInternal>((set, get) => ({
   view: 'month',
   isLoading: false,
   _abortController: null,
+
+  // New function to get events for the current view
+  getEventsInView: (viewStartDate, viewEndDate) => {
+    const { events } = get();
+    const normalEvents: CalendarEvent[] = [];
+    const recurringEvents: CalendarEvent[] = [];
+
+    for (const event of events) {
+      if (event.recurrenceRule) {
+        recurringEvents.push(event);
+      } else {
+        // Check if the non-recurring event is within the view
+        if (event.startMs <= viewEndDate.getTime() && event.endMs >= viewStartDate.getTime()) {
+          normalEvents.push(event);
+        }
+      }
+    }
+
+    const recurringInstances = recurringEvents.flatMap(recurringEvent =>
+      generateRecurringEvents(recurringEvent, viewStartDate, viewEndDate)
+    );
+
+    return [...normalEvents, ...recurringInstances];
+  },
 
   // Load events from database - 消除竞态条件
   loadEvents: async () => {
@@ -45,44 +74,94 @@ const useCalendarStore = create<CalendarStoreInternal>((set, get) => ({
     }
   },
 
-  // Unified save method - handles both create and update
-  saveEvent: async (event) => {
-    try {
+  // Unified save method - handles both create and update, now with scope
+  saveEvent: async (event, scope = 'all') => {
+    const { events, saveEvent } = get();
+    
+    // Editing a single instance of a recurring event
+    if (scope === 'one' && event.id) {
+      const originalEvent = events.find(e => e.id === event.id);
+      const exceptionDate = event.startMs;
+      if (!originalEvent || typeof exceptionDate === 'undefined') return null;
+
+      // 1. Add an exception to the original event
+      const updatedOriginalEvent: CalendarEvent = {
+        ...originalEvent,
+        exceptionDates: [...(originalEvent.exceptionDates || []), exceptionDate],
+      };
+      await electronDB.saveEvent(updatedOriginalEvent);
+
+      // 2. Create a new, separate event for the edited instance
+      const newStandaloneEvent: Partial<CalendarEvent> = {
+        ...event,
+        id: undefined, // Let DB create a new ID
+        recurrenceRule: undefined, // It's no longer recurring
+        seriesId: originalEvent.id, // Link back to the original series
+      };
+      
+      const savedStandaloneEvent = await electronDB.saveEvent(newStandaloneEvent);
+      
+      // 3. Update state
+      if (savedStandaloneEvent) {
+        set((state): Partial<CalendarStoreInternal> => ({
+          events: [
+            ...state.events.filter(e => e.id !== originalEvent.id),
+            updatedOriginalEvent,
+            savedStandaloneEvent
+          ]
+        }));
+      }
+      return savedStandaloneEvent;
+
+    } else {
+      // Standard save/update for a series or a non-recurring event
       const savedEvent = await electronDB.saveEvent(event);
       if (savedEvent) {
         set((state) => {
           const existingIndex = state.events.findIndex(e => e.id === savedEvent.id);
           if (existingIndex >= 0) {
-            // Update existing
             const newEvents = [...state.events];
             newEvents[existingIndex] = savedEvent;
             return { events: newEvents };
           } else {
-            // Add new
             return { events: [...state.events, savedEvent] };
           }
         });
         return savedEvent;
       }
-    } catch (error) {
-      console.error('Failed to save event:', error);
     }
     return null;
   },
 
-  deleteEvent: async (id) => {
-    try {
-      const success = await electronDB.deleteEvent(id);
-      if (success) {
-        set((state) => ({
-          events: state.events.filter((event) => event.id !== id),
-        }));
+  deleteEvent: async (id, scope = 'all', startMs) => {
+    const { events, saveEvent } = get();
+
+    if (scope === 'one' && startMs) {
+      const eventToDelete = events.find(e => e.id === id);
+      if (eventToDelete) {
+        const updatedEvent: CalendarEvent = {
+          ...eventToDelete,
+          exceptionDates: [...(eventToDelete.exceptionDates || []), startMs],
+        };
+        await saveEvent(updatedEvent, 'all');
         return true;
       }
-    } catch (error) {
-      console.error('Failed to delete event:', error);
+      return false;
+    } else {
+      // Delete the entire series
+      try {
+        const success = await electronDB.deleteEvent(id);
+        if (success) {
+          set((state) => ({
+            events: state.events.filter((event) => event.id !== id),
+          }));
+          return true;
+        }
+      } catch (error) {
+        console.error('Failed to delete event series:', error);
+      }
+      return false;
     }
-    return false;
   },
 
   // Action to clear all events from the state

@@ -5,9 +5,9 @@ import Input from 'antd/es/input';
 import Switch from 'antd/es/switch';
 import Select from 'antd/es/select';
 import Tag from 'antd/es/tag';
-import { App } from 'antd';
+import { App, Radio, InputNumber, Space } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
-import { CalendarEvent, msToDate, dateToMs } from '../types';
+import { CalendarEvent, RecurrenceRule, msToDate, dateToMs } from '../types';
 import TimeSlotSelector from './TimeSlotSelector';
 import { StyledModal, StyledForm } from './EventModalStyles';
 
@@ -37,6 +37,8 @@ const EventModal: React.FC<EventModalProps> = ({
 }) => {
   const [form] = Form.useForm();
   const [loading, setLoading] = useState(false);
+  const [isRecurring, setIsRecurring] = useState(!!event?.recurrenceRule);
+  const [recurrenceType, setRecurrenceType] = useState(event?.recurrenceRule?.type || 'monthly');
   const { message } = App.useApp();
 
   const isEditing = useMemo(() => !!event?.id, [event?.id]);
@@ -46,7 +48,7 @@ const EventModal: React.FC<EventModalProps> = ({
       const startDate = event.startMs ? msToDate(event.startMs) : new Date();
       const endDate = event.endMs ? msToDate(event.endMs) : new Date();
       
-      return {
+      const initial = {
         title: event.title || '',
         description: event.description || '',
         timeSlot: (event.isAllDay || (!event.startMs && !event.endMs)) ? undefined : { 
@@ -54,8 +56,17 @@ const EventModal: React.FC<EventModalProps> = ({
           end: dayjs(endDate) 
         },
         isAllDay: event.isAllDay || false,
-        tags: event.tags || []
+        tags: event.tags || [],
+        isRecurring: !!event.recurrenceRule,
+        recurrenceType: event.recurrenceRule?.type || 'monthly',
+        customInterval: event.recurrenceRule?.type === 'custom' ? event.recurrenceRule.interval : 1,
       };
+      
+      // Set state for controlled components
+      setIsRecurring(initial.isRecurring);
+      setRecurrenceType(initial.recurrenceType);
+      
+      return initial;
     }
 
     const defaultStartDate = dayjs(selectedDate || new Date()).hour(8).minute(0).second(0);
@@ -66,7 +77,10 @@ const EventModal: React.FC<EventModalProps> = ({
       description: '',
       timeSlot: { start: defaultStartDate, end: defaultEndDate },
       isAllDay: false,
-      tags: []
+      tags: [],
+      isRecurring: false,
+      recurrenceType: 'monthly',
+      customInterval: 1,
     };
   }, [event, selectedDate]);
 
@@ -114,6 +128,20 @@ const EventModal: React.FC<EventModalProps> = ({
         tags: values.tags || []
       };
 
+      if (values.isRecurring) {
+        eventData.recurrenceRule = {
+          type: values.recurrenceType,
+          interval: values.recurrenceType === 'custom' 
+            ? values.customInterval 
+            : (values.recurrenceType === 'yearly' ? 365 : 1),
+        };
+        if (values.recurrenceType === 'yearly') {
+          eventData.recurrenceRule.type = 'custom'; // Treat yearly as 365 days custom
+        }
+      } else {
+        eventData.recurrenceRule = undefined;
+      }
+
       await onSubmit(eventData);
       onClose();
       message.success(isEditing ? '事件已更新' : '事件已创建');
@@ -131,6 +159,8 @@ const EventModal: React.FC<EventModalProps> = ({
 
   const handleAfterClose = useCallback(() => {
     form.resetFields();
+    setIsRecurring(false);
+    setRecurrenceType('monthly');
   }, [form]);
 
   const handleTimeSlotChange = useCallback((timeSlot: { start: Dayjs; end: Dayjs }) => {
@@ -143,6 +173,17 @@ const EventModal: React.FC<EventModalProps> = ({
       form.setFieldValue('timeSlot', undefined);
     }
   }, [form]);
+
+  const handleIsRecurringChange = useCallback((checked: boolean) => {
+    setIsRecurring(checked);
+    if (!checked) {
+      form.setFieldsValue({ recurrenceType: 'monthly', customInterval: 1 });
+    }
+  }, [form]);
+
+  const handleRecurrenceTypeChange = useCallback((e: any) => {
+    setRecurrenceType(e.target.value);
+  }, []);
 
   React.useEffect(() => {
     if (visible) {
@@ -263,6 +304,34 @@ const EventModal: React.FC<EventModalProps> = ({
             );
           }}
         </Form.Item>
+
+        <Form.Item
+          name="isRecurring"
+          label="🔄 周期性事件"
+          valuePropName="checked"
+        >
+          <Switch onChange={handleIsRecurringChange} />
+        </Form.Item>
+
+        {isRecurring && (
+          <Form.Item
+            label="🔁 重复规则"
+          >
+            <Form.Item name="recurrenceType" noStyle>
+              <Radio.Group onChange={handleRecurrenceTypeChange}>
+                <Radio.Button value="monthly">每月</Radio.Button>
+                <Radio.Button value="quarterly">每季度</Radio.Button>
+                <Radio.Button value="yearly">每年 (365天)</Radio.Button>
+                <Radio.Button value="custom">自定义</Radio.Button>
+              </Radio.Group>
+            </Form.Item>
+            {recurrenceType === 'custom' && (
+              <Form.Item name="customInterval" noStyle rules={[{ required: true, message: '请输入天数' }]}>
+                <InputNumber min={1} max={1000} style={{ marginLeft: 10, width: 100 }} addonAfter="天" />
+              </Form.Item>
+            )}
+          </Form.Item>
+        )}
       </StyledForm>
     </StyledModal>
   );

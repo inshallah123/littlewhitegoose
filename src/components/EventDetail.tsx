@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 // Linus式优化：按需引入，减少bundle体积
 import Modal from 'antd/es/modal';
 import Button from 'antd/es/button';
@@ -7,10 +7,11 @@ import Space from 'antd/es/space';
 import Typography from 'antd/es/typography';
 import Divider from 'antd/es/divider';
 import Tag from 'antd/es/tag';
-import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined, RedoOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import dayjs from 'dayjs';
 import { CalendarEvent, msToDate } from '../types';
+import { getNextOccurrence } from '../utils/recurrence';
 
 const { Text, Title } = Typography;
 
@@ -162,8 +163,8 @@ interface EventDetailProps {
   visible: boolean;
   event: CalendarEvent | null;
   onClose: () => void;
-  onEdit: (event: CalendarEvent) => void;
-  onDelete: (eventId: string) => Promise<void>;
+  onEdit: (event: CalendarEvent, scope: 'one' | 'all') => void;
+  onDelete: (eventId: string, scope: 'one' | 'all', startMs?: number) => Promise<void>;
 }
 
 const EventDetail: React.FC<EventDetailProps> = ({
@@ -175,18 +176,44 @@ const EventDetail: React.FC<EventDetailProps> = ({
 }) => {
   if (!event) return null;
 
-  const handleDelete = async () => {
+  const isRecurring = !!event.recurrenceRule;
+
+  const handleDelete = async (scope: 'one' | 'all') => {
     try {
-      await onDelete(event.id);
+      await onDelete(event.id, scope, event.startMs);
       onClose();
     } catch (error) {
       console.error('删除事件失败:', error);
     }
   };
 
-  const handleEdit = () => {
-    onEdit(event);
+  const handleEdit = (scope: 'one' | 'all') => {
+    onEdit(event, scope);
     onClose();
+  };
+
+  const showDeleteConfirm = () => {
+    Modal.confirm({
+      title: '请选择删除范围',
+      content: '您想如何删除这个周期性事件？',
+      okText: '仅删除这一个',
+      cancelText: '删除整个系列',
+      onOk: () => handleDelete('one'),
+      onCancel: () => handleDelete('all'),
+      centered: true,
+    });
+  };
+
+  const showEditConfirm = () => {
+    Modal.confirm({
+      title: '请选择编辑范围',
+      content: '您想如何编辑这个周期性事件？',
+      okText: '仅编辑这一个',
+      cancelText: '编辑整个系列',
+      onOk: () => handleEdit('one'),
+      onCancel: () => handleEdit('all'),
+      centered: true,
+    });
   };
 
   const formatEventTime = (start: Date, end: Date, isAllDay?: boolean) => {
@@ -209,6 +236,27 @@ const EventDetail: React.FC<EventDetailProps> = ({
     }
   };
 
+  const recurrenceText = useMemo(() => {
+    if (!event.recurrenceRule) return '';
+    const { type, interval } = event.recurrenceRule;
+    switch (type) {
+      case 'monthly': return '每月重复';
+      case 'quarterly': return '每季度重复';
+      case 'yearly': return '每年重复';
+      case 'custom': 
+        if (interval === 365) return '每年重复 (365天)';
+        return `每 ${interval} 天重复`;
+      default: return '周期性事件';
+    }
+  }, [event.recurrenceRule]);
+
+  const nextOccurrenceDate = useMemo(() => {
+    if (!event.recurrenceRule) return null;
+    // We need the original event to calculate from its start date
+    const next = getNextOccurrence(event, new Date(event.startMs));
+    return next ? dayjs(next).format('YYYY年M月D日') : '无';
+  }, [event]);
+
   return (
     <StyledModal
       title="📋 事件详情"
@@ -222,22 +270,28 @@ const EventDetail: React.FC<EventDetailProps> = ({
           key="edit"
           type="primary"
           icon={<EditOutlined />}
-          onClick={handleEdit}
+          onClick={() => isRecurring ? showEditConfirm() : handleEdit('all')}
         >
           ✏️ 编辑
         </Button>,
-        <Popconfirm
-          key="delete"
-          title="🗑️ 确定要删除这个事件吗？"
-          onConfirm={handleDelete}
-          okText="确定删除"
-          cancelText="取消"
-          placement="top"
-        >
-          <Button danger icon={<DeleteOutlined />}>
+        isRecurring ? (
+          <Button danger icon={<DeleteOutlined />} onClick={showDeleteConfirm}>
             🗑️ 删除
           </Button>
-        </Popconfirm>
+        ) : (
+          <Popconfirm
+            key="delete"
+            title="🗑️ 确定要删除这个事件吗？"
+            onConfirm={() => handleDelete('all')}
+            okText="确定删除"
+            cancelText="取消"
+            placement="top"
+          >
+            <Button danger icon={<DeleteOutlined />}>
+              🗑️ 删除
+            </Button>
+          </Popconfirm>
+        )
       ]}
       width={560}
       centered
@@ -255,6 +309,19 @@ const EventDetail: React.FC<EventDetailProps> = ({
             {formatEventTime(msToDate(event.startMs), msToDate(event.endMs), event.isAllDay)}
           </div>
         </div>
+
+        {isRecurring && (
+          <div className="info-section">
+            <div className="info-label">
+              <RedoOutlined /> 重复规则
+            </div>
+            <div className="info-content">
+              {recurrenceText}
+              <br />
+              <Text type="secondary">下一个周期日: {nextOccurrenceDate}</Text>
+            </div>
+          </div>
+        )}
 
         {event.tags && event.tags.length > 0 && (
           <div className="info-section">
