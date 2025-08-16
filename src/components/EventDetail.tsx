@@ -1,5 +1,11 @@
 import React, { memo } from 'react';
-import { Modal, Button, Popconfirm, Space, Typography, Divider } from 'antd';
+// Linus式优化：按需引入，减少bundle体积
+import Modal from 'antd/es/modal';
+import Button from 'antd/es/button';
+import Popconfirm from 'antd/es/popconfirm';
+import Space from 'antd/es/space';
+import Typography from 'antd/es/typography';
+import Divider from 'antd/es/divider';
 import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 import dayjs from 'dayjs';

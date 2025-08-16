@@ -1,53 +1,71 @@
 import { create } from 'zustand';
-import { CalendarEvent, CalendarStore } from '../types';
+import { CalendarEvent, CalendarStore, nowMs } from '../types';
 import electronDB from '../services/electronDB';
 
-const useCalendarStore = create<CalendarStore>((set, get) => ({
+// Linus式改进：AbortController作为状态的一部分管理
+interface CalendarStoreInternal extends CalendarStore {
+  _abortController: AbortController | null;
+}
+
+const useCalendarStore = create<CalendarStoreInternal>((set, get) => ({
   events: [],
-  selectedDate: new Date(),
+  selectedMs: nowMs(),
+  viewMs: nowMs(),
   view: 'month',
   isLoading: false,
+  _abortController: null,
 
-  // Load events from database
+  // Load events from database - 消除竞态条件
   loadEvents: async () => {
-    set({ isLoading: true });
+    const state = get();
+    
+    // Cancel previous load if still in progress
+    if (state._abortController) {
+      state._abortController.abort();
+    }
+    
+    const controller = new AbortController();
+    set({ isLoading: true, _abortController: controller });
+    
     try {
       const events = await electronDB.getAllEvents();
-      set({ events, isLoading: false });
+      
+      // Check if this request was cancelled
+      if (controller.signal.aborted) {
+        return;
+      }
+      
+      set({ events, isLoading: false, _abortController: null });
     } catch (error) {
+      if (controller.signal.aborted) {
+        return;
+      }
       console.error('Failed to load events:', error);
-      set({ isLoading: false });
+      set({ events: [], isLoading: false, _abortController: null });
     }
   },
 
-  addEvent: async (event) => {
+  // Unified save method - handles both create and update
+  saveEvent: async (event) => {
     try {
-      const newEvent = await electronDB.createEvent(event);
-      if (newEvent) {
-        set((state) => ({
-          events: [...state.events, newEvent],
-        }));
-        return newEvent;
+      const savedEvent = await electronDB.saveEvent(event);
+      if (savedEvent) {
+        set((state) => {
+          const existingIndex = state.events.findIndex(e => e.id === savedEvent.id);
+          if (existingIndex >= 0) {
+            // Update existing
+            const newEvents = [...state.events];
+            newEvents[existingIndex] = savedEvent;
+            return { events: newEvents };
+          } else {
+            // Add new
+            return { events: [...state.events, savedEvent] };
+          }
+        });
+        return savedEvent;
       }
     } catch (error) {
-      console.error('Failed to create event:', error);
-    }
-    return null;
-  },
-
-  updateEvent: async (id, updatedEvent) => {
-    try {
-      const updated = await electronDB.updateEvent(id, updatedEvent);
-      if (updated) {
-        set((state) => ({
-          events: state.events.map((event) =>
-            event.id === id ? updated : event
-          ),
-        }));
-        return updated;
-      }
-    } catch (error) {
-      console.error('Failed to update event:', error);
+      console.error('Failed to save event:', error);
     }
     return null;
   },
@@ -67,13 +85,34 @@ const useCalendarStore = create<CalendarStore>((set, get) => ({
     return false;
   },
 
-  setSelectedDate: (date) => {
-    set({ selectedDate: date });
+  setSelectedMs: (ms) => {
+    set({ selectedMs: ms });
+  },
+
+  setViewMs: (ms) => {
+    set({ viewMs: ms });
   },
 
   setView: (view) => {
     set({ view });
   },
+  
+  // Cleanup function for unmounting
+  cleanup: () => {
+    const state = get();
+    
+    // Cancel any pending loads
+    if (state._abortController) {
+      state._abortController.abort();
+    }
+    
+    // Reset state
+    set({
+      events: [],
+      isLoading: false,
+      _abortController: null
+    });
+  }
 }));
 
 export default useCalendarStore;

@@ -46,18 +46,48 @@ class DatabaseService {
     `);
   }
 
-  // Event CRUD operations
-  getAllEvents() {
-    const stmt = this.db.prepare(`
+  // Optimized: Get all events with reminders in single query
+  getAllEventsWithReminders() {
+    // Get all events
+    const eventsStmt = this.db.prepare(`
       SELECT 
         id, title, description, start_time, end_time, color, is_all_day,
         created_at, updated_at
       FROM events 
       ORDER BY start_time ASC
     `);
+    
+    // Get all reminders
+    const remindersStmt = this.db.prepare(`
+      SELECT id, event_id, minutes, type 
+      FROM reminders
+    `);
 
-    const rows = stmt.all();
-    return rows.map(this.mapRowToEvent.bind(this));
+    const events = eventsStmt.all();
+    const reminders = remindersStmt.all();
+
+    return { events, reminders };
+  }
+
+  // Keep legacy method for compatibility
+  getAllEvents() {
+    const { events, reminders } = this.getAllEventsWithReminders();
+    
+    // Build reminder map for O(1) lookup
+    const reminderMap = new Map();
+    reminders.forEach(r => {
+      if (!reminderMap.has(r.event_id)) {
+        reminderMap.set(r.event_id, []);
+      }
+      reminderMap.get(r.event_id).push({
+        id: r.id,
+        minutes: r.minutes,
+        type: r.type
+      });
+    });
+
+    // Map events with reminders
+    return events.map(event => this.mapRowToEvent(event, reminderMap.get(event.id)));
   }
 
   getEventById(id) {
@@ -66,6 +96,15 @@ class DatabaseService {
     
     if (!row) return null;
     return this.mapRowToEvent(row);
+  }
+
+  // Unified save method - handles both create and update
+  saveEvent(event) {
+    if (event.id && this.getEventById(event.id)) {
+      return this.updateEvent(event.id, event);
+    } else {
+      return this.createEvent(event);
+    }
   }
 
   createEvent(event) {
@@ -79,12 +118,15 @@ class DatabaseService {
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
+    const startTime = event.startMs ? Math.floor(event.startMs / 1000) : Math.floor(new Date(event.start).getTime() / 1000);
+    const endTime = event.endMs ? Math.floor(event.endMs / 1000) : Math.floor(new Date(event.end).getTime() / 1000);
+
     stmt.run(
       id,
       event.title,
       event.description || null,
-      Math.floor(new Date(event.start).getTime() / 1000),
-      Math.floor(new Date(event.end).getTime() / 1000),
+      startTime,
+      endTime,
       event.color || '#1890ff',
       event.isAllDay ? 1 : 0,
       now,
@@ -113,11 +155,18 @@ class DatabaseService {
       fields.push('description = ?');
       values.push(updates.description);
     }
-    if (updates.start !== undefined) {
+    // Handle both legacy and new timestamp formats
+    if (updates.startMs !== undefined) {
+      fields.push('start_time = ?');
+      values.push(Math.floor(updates.startMs / 1000));
+    } else if (updates.start !== undefined) {
       fields.push('start_time = ?');
       values.push(Math.floor(new Date(updates.start).getTime() / 1000));
     }
-    if (updates.end !== undefined) {
+    if (updates.endMs !== undefined) {
+      fields.push('end_time = ?');
+      values.push(Math.floor(updates.endMs / 1000));
+    } else if (updates.end !== undefined) {
       fields.push('end_time = ?');
       values.push(Math.floor(new Date(updates.end).getTime() / 1000));
     }
@@ -183,8 +232,22 @@ class DatabaseService {
     return stmt.all(eventId);
   }
 
-  // Helper method to convert database row to CalendarEvent
-  mapRowToEvent(row) {
+  // Optimized helper method to convert database row to CalendarEvent
+  mapRowToEvent(row, reminders = []) {
+    return {
+      id: row.id,
+      title: row.title,
+      description: row.description || undefined,
+      startMs: row.start_time * 1000,  // Convert seconds to milliseconds
+      endMs: row.end_time * 1000,      // Convert seconds to milliseconds
+      color: row.color || '#1890ff',
+      isAllDay: Boolean(row.is_all_day),
+      reminders: reminders && reminders.length > 0 ? reminders : undefined,
+    };
+  }
+
+  // Legacy method for backward compatibility
+  mapRowToEventLegacy(row) {
     const reminders = this.getRemindersByEventId(row.id).map(r => ({
       id: r.id,
       minutes: r.minutes,

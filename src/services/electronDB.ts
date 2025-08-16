@@ -1,79 +1,76 @@
-import { CalendarEvent } from '../types';
+import { CalendarEvent, EventRow, ReminderRow } from '../types';
 
 class ElectronDatabaseService {
   // Check if running in Electron environment
-  private get isElectron(): boolean {
-    return typeof window !== 'undefined' && !!window.electronAPI && !!window.electronAPI?.db;
+  private get hasElectron(): boolean {
+    return !!window.electronAPI?.db;
   }
 
   async getAllEvents(): Promise<CalendarEvent[]> {
-    if (!this.isElectron) {
+    if (!this.hasElectron) {
       console.warn('Not running in Electron, returning empty events');
       return [];
     }
 
     try {
-      const events = await window.electronAPI!.db.getAllEvents();
-      // 确保 start 和 end 字段是真正的 Date 对象
-      return events.map((event: any) => ({
-        ...event,
-        start: new Date(event.start),
-        end: new Date(event.end)
-      }));
+      // Use optimized query if available
+      if (typeof window.electronAPI!.db.getAllEventsWithReminders === 'function') {
+        const { events, reminders } = await window.electronAPI!.db.getAllEventsWithReminders();
+        return this.mapEventsWithReminders(events, reminders);
+      } else {
+        // Fallback - this shouldn't happen with updated preload
+        console.warn('Using legacy getAllEvents method');
+        return [];
+      }
     } catch (error) {
       console.error('Failed to get events:', error);
       return [];
     }
   }
 
-  async createEvent(eventData: Omit<CalendarEvent, 'id'>): Promise<CalendarEvent | null> {
-    if (!this.isElectron) {
-      console.warn('Not running in Electron, cannot create event');
-      return null;
-    }
-
-    try {
-      const event = await window.electronAPI!.db.createEvent(eventData);
-      if (event) {
-        // 确保返回的事件有正确的 Date 对象
-        return {
-          ...event,
-          start: new Date(event.start),
-          end: new Date(event.end)
-        };
+  // Map database rows to CalendarEvent objects
+  private mapEventsWithReminders(events: EventRow[], reminders: ReminderRow[]): CalendarEvent[] {
+    const reminderMap = new Map<string, any[]>();
+    reminders.forEach(r => {
+      if (!reminderMap.has(r.event_id)) {
+        reminderMap.set(r.event_id, []);
       }
-      return null;
-    } catch (error) {
-      console.error('Failed to create event:', error);
-      return null;
-    }
+      reminderMap.get(r.event_id)!.push({
+        id: r.id,
+        minutes: r.minutes,
+        type: r.type
+      });
+    });
+
+    return events.map(event => ({
+      id: event.id,
+      title: event.title,
+      description: event.description || undefined,
+      startMs: event.start_time * 1000,
+      endMs: event.end_time * 1000,
+      color: event.color || '#1890ff',
+      isAllDay: Boolean(event.is_all_day),
+      reminders: reminderMap.get(event.id) || undefined,
+    }));
   }
 
-  async updateEvent(id: string, updates: Partial<CalendarEvent>): Promise<CalendarEvent | null> {
-    if (!this.isElectron) {
-      console.warn('Not running in Electron, cannot update event');
+  async saveEvent(eventData: Partial<CalendarEvent>): Promise<CalendarEvent | null> {
+    if (!this.hasElectron) {
+      console.warn('Not running in Electron, cannot save event');
       return null;
     }
 
     try {
-      const event = await window.electronAPI!.db.updateEvent(id, updates);
-      if (event) {
-        // 确保返回的事件有正确的 Date 对象
-        return {
-          ...event,
-          start: new Date(event.start),
-          end: new Date(event.end)
-        };
-      }
-      return null;
+      const event = await window.electronAPI!.db.saveEvent(eventData);
+      return event;
     } catch (error) {
-      console.error('Failed to update event:', error);
+      console.error('Failed to save event:', error);
       return null;
     }
   }
 
   async deleteEvent(id: string): Promise<boolean> {
-    if (!this.isElectron) {
+    if (!this.hasElectron) {
       console.warn('Not running in Electron, cannot delete event');
       return false;
     }
@@ -87,7 +84,7 @@ class ElectronDatabaseService {
   }
 
   async getStats(): Promise<{ events: number }> {
-    if (!this.isElectron) {
+    if (!this.hasElectron) {
       return { events: 0 };
     }
 
@@ -101,7 +98,7 @@ class ElectronDatabaseService {
 
   // Setup menu event listeners
   setupMenuListeners(onNewEvent: () => void, onChangeView: (view: string) => void) {
-    if (!this.isElectron) return;
+    if (!this.hasElectron) return;
 
     window.electronAPI!.onNewEvent(onNewEvent);
     window.electronAPI!.onChangeView((event, view) => onChangeView(view));

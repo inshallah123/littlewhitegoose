@@ -163,6 +163,8 @@ function initializeDatabase() {
 
 // IPC handlers for database operations
 function setupIPCHandlers() {
+  console.log('Setting up IPC handlers...');
+  
   // Get all events
   ipcMain.handle('db:getAllEvents', async () => {
     try {
@@ -173,7 +175,27 @@ function setupIPCHandlers() {
     }
   });
 
-  // Create event
+  // Optimized handler for getting events with reminders
+  ipcMain.handle('db:getAllEventsWithReminders', async () => {
+    try {
+      return dbService.getAllEventsWithReminders();
+    } catch (error) {
+      console.error('Error getting events with reminders:', error);
+      return { events: [], reminders: [] };
+    }
+  });
+
+  // Unified save event handler
+  ipcMain.handle('db:saveEvent', async (event, eventData) => {
+    try {
+      return dbService.saveEvent(eventData);
+    } catch (error) {
+      console.error('Error saving event:', error);
+      throw error;
+    }
+  });
+
+  // Create event (legacy)
   ipcMain.handle('db:createEvent', async (event, eventData) => {
     try {
       return dbService.createEvent(eventData);

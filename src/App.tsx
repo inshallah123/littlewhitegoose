@@ -1,20 +1,22 @@
 import React, { useEffect, useRef } from 'react';
-import { ConfigProvider, App as AntdApp } from 'antd';
-import zhCN from 'antd/locale/zh_CN';
+import ConfigProvider from 'antd/es/config-provider';
+import { App as AntdApp } from 'antd';
+import zhCN from 'antd/es/locale/zh_CN';
 import styled, { createGlobalStyle } from 'styled-components';
 import CalendarComponent from './components/Calendar';
+import useCalendarStore from './store/calendarStore';
 import 'antd/dist/reset.css';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 
 const GlobalStyle = createGlobalStyle`
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  /* Linus式优化：移除Google字体，使用系统字体栈 */
   
   * {
     box-sizing: border-box;
   }
   
   body {
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Helvetica Neue', Helvetica, Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
@@ -105,25 +107,43 @@ const Header = styled.div`
 
 function App() {
   const calendarRef = useRef<any>(null);
+  const cleanup = useCalendarStore(state => state.cleanup);
 
   useEffect(() => {
-    // 监听菜单的新建日程事件
-    if (window.electronAPI) {
-      const handleNewEvent = () => {
-        if (calendarRef.current && calendarRef.current.handleMenuNewEvent) {
-          calendarRef.current.handleMenuNewEvent();
-        }
-      };
+    // Global cleanup on unmount
+    return () => {
+      cleanup();
+    };
+  }, [cleanup]);
 
-      const handleViewChange = (_event: any, view: string) => {
-        if (calendarRef.current && calendarRef.current.handleMenuViewChange) {
-          calendarRef.current.handleMenuViewChange(view);
-        }
-      };
+  useEffect(() => {
+    // Electron event listeners - Linus式优化：检查返回值类型
+    if (!window.electronAPI) return;
 
-      window.electronAPI.onNewEvent(handleNewEvent);
-      window.electronAPI.onChangeView(handleViewChange);
-    }
+    const handleNewEvent = () => {
+      if (calendarRef.current?.handleMenuNewEvent) {
+        calendarRef.current.handleMenuNewEvent();
+      }
+    };
+
+    const handleViewChange = (_event: any, view: string) => {
+      if (calendarRef.current?.handleMenuViewChange) {
+        calendarRef.current.handleMenuViewChange(view);
+      }
+    };
+
+    const removeNewEventListener = window.electronAPI.onNewEvent(handleNewEvent);
+    const removeViewChangeListener = window.electronAPI.onChangeView(handleViewChange);
+
+    return () => {
+      // 防御性编程 - 检查是否为函数
+      if (typeof removeNewEventListener === 'function') {
+        removeNewEventListener();
+      }
+      if (typeof removeViewChangeListener === 'function') {
+        removeViewChangeListener();
+      }
+    };
   }, []);
 
   return (

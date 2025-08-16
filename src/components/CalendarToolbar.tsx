@@ -1,5 +1,7 @@
 import React, { memo } from 'react';
-import { Button, Space } from 'antd';
+// Linus式优化：按需引入，减少bundle体积
+import Button from 'antd/es/button';
+import Space from 'antd/es/space';
 import { PlusOutlined, LoadingOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
 
@@ -137,12 +139,12 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
         
         <DateInfo>
           <span className="selected-date">
-            📅 {selectedDate.toLocaleDateString('zh-CN', { 
+            📅 {React.useMemo(() => selectedDate.toLocaleDateString('zh-CN', { 
               year: 'numeric', 
               month: 'long', 
               day: 'numeric',
               weekday: 'long' 
-            })}
+            }), [selectedDate])}
           </span>
           <span className="hint-text">
             💡 双击日期快速创建事件

@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { CalendarEvent } from '../types';
+import { CalendarEvent, msToDate } from '../types';
 import dayjs from 'dayjs';
 
 interface UseEventFiltersProps {
@@ -30,8 +30,8 @@ export const useEventFilters = ({ events, searchTerm, dateRange }: UseEventFilte
       const endDay = dayjs(dateRange.end);
       
       filtered = filtered.filter(event => {
-        const eventStart = dayjs(event.start);
-        const eventEnd = dayjs(event.end);
+        const eventStart = dayjs(msToDate(event.startMs));
+        const eventEnd = dayjs(msToDate(event.endMs));
         
         // 事件与日期范围有交集
         return (
@@ -43,7 +43,7 @@ export const useEventFilters = ({ events, searchTerm, dateRange }: UseEventFilte
 
     // 按开始时间排序
     return filtered.sort((a, b) => 
-      dayjs(a.start).valueOf() - dayjs(b.start).valueOf()
+      a.startMs - b.startMs
     );
   }, [events, searchTerm, dateRange]);
 
@@ -53,13 +53,13 @@ export const useEventFilters = ({ events, searchTerm, dateRange }: UseEventFilte
     const today = dayjs().startOf('day');
     
     const todayEvents = events.filter(event => 
-      dayjs(event.start).isSame(today, 'day') || 
-      dayjs(event.end).isSame(today, 'day') ||
-      (dayjs(event.start).isBefore(today) && dayjs(event.end).isAfter(today))
+      dayjs(msToDate(event.startMs)).isSame(today, 'day') || 
+      dayjs(msToDate(event.endMs)).isSame(today, 'day') ||
+      (dayjs(msToDate(event.startMs)).isBefore(today) && dayjs(msToDate(event.endMs)).isAfter(today))
     ).length;
 
     const upcomingEvents = events.filter(event => 
-      dayjs(event.start).isAfter(today)
+      dayjs(msToDate(event.startMs)).isAfter(today)
     ).length;
 
     return {

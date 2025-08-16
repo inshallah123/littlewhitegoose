@@ -1,5 +1,8 @@
 import React, { useMemo } from 'react';
-import { Select, Space, Typography } from 'antd';
+// Linus式优化：按需引入，减少bundle体积
+import Select from 'antd/es/select';
+import Space from 'antd/es/space';
+import Typography from 'antd/es/typography';
 import styled from 'styled-components';
 import dayjs, { Dayjs } from 'dayjs';
 
