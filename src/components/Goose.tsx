@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
 // --- Sprite Configuration ---
 const SPRITE_SRC = '/assets/goose_sprite.png';
@@ -8,12 +8,34 @@ const MOVE_SPEED = 4;
 
 // --- Content Configuration ---
 const IDLE_TOOLTIPS = [
-  '摸摸我?', '嘎?', '今天有什么安排呀?', '发呆中, 勿扰...', '瞅啥呢?', '嘎嘎嘎!', '需要我帮你做点什么吗?', 'zzzZZZ...',
-  '思考鹅生...', '你的日程看起来好满哦', '肚肚饿了, 有小鱼干吗?', '那个按钮看起来很好玩...', '给你比个心 ❤️', '今天天气真好, 适合出门...哦我出不去',
+  // 经典款
+  '摸摸鹅?', '嘎?', '今天有什么安排呀?', '发呆中, 勿扰...', '瞅啥呢?', '嘎嘎嘎!', 'zzzZZZ...', '给你比个心 ❤️',
+  // 文学鹅
+  '屏幕上看不见翅膀的痕迹，但鹅已经飞过。', '世界这么大，鹅想去看看...你的C盘。', '你看屏幕的眼神，像极了夏天的晚风。',
+  // 哲学鹅
+  '一只鹅的宇宙，就是屏幕的边界吗？', '如果鹅一直向左走，会回到原来的位置吗？', '你是在看鹅，还是在看屏幕上的像素点？', '鹅思故鹅在。',
+  // 傲娇款
+  '哼，别以为鹅不知道你在摸鱼。', '你再点一下试试？信不信鹅...嘎给你看！', '鹅的羽毛很贵的，不许乱摸。',
+  // 暖心款
+  '今天也要加油哦！', '累了就歇歇吧，鹅陪着你。', '你的光标，像星星一样闪亮。',
+  // 神秘款
+  '嘘...鹅看到了一个秘密。', '你知道...屏幕背后是什么吗？',
+  // 打破次元壁
+  '鹅是谁？鹅在哪？哦，在你的屏幕上。', '帮鹅点一下那个“开始”菜单，谢谢。',
 ];
 const ACTIVE_TOOLTIPS = [
-  '芜湖, 起飞!', '走咯, 走咯!', '看我M字抖动!', '要去哪儿呢...', '别挡道!', '嘎——!', '我可不是一只普通的鹅!',
-  '冲鸭!', '风驰电掣——!', '我就是这条gai最靓的仔!', '快看我! 我在发光!', '有紧急任务!', '根本停不下来~',
+  // 经典款
+  '芜湖, 起飞!', '走咯, 走咯!', '看鹅M字抖动!', '要去哪儿呢...', '别挡道!', '嘎——!', '冲鸭!', '根本停不下来~',
+  // 文学鹅
+  '鹅在追逐屏幕上流动的光。', '每一次迁徙，都是为了新的风景。', '步履不停，心向远方。',
+  // 哲学鹅
+  '前进是唯一的方向，直到遇到边界。', '速度与激情，只是为了证明鹅的存在。', '从一个像素到另一个像素的远征。',
+  // 傲娇款
+  '鹅走鹅的路，你最好别挡道！', '才不是为了你才走来走去的呢！', '看鹅光速飘移！你学不会的。',
+  // 无厘头
+  '一只鹅的使命是什么？大概是...巡视你的桌面吧。', '前面的图标，麻烦让一让！', '嘎。（这句话有1024种含义）',
+  // 打破次元壁
+  '去看看你的CPU现在多少度了？', '这屏幕的刷新率还挺高。', '让鹅看看你写的什么好东西...'
 ];
 
 // --- Animation Definitions ---
@@ -35,7 +57,8 @@ const Goose: React.FC = () => {
   const [state, setState] = useState<GooseState>('IDLE');
   const [animationFrame, setAnimationFrame] = useState(0);
   const [idlePose, setIdlePose] = useState(() => Math.floor(Math.random() * ANIMATIONS.IDLE.frames));
-  const [tooltipText, setTooltipText] = useState(IDLE_TOOLTIPS[0]);
+  const [bubbleText, setBubbleText] = useState('');
+  const bubbleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Animation loop for ACTIVE states
   useEffect(() => {
@@ -66,14 +89,25 @@ const Goose: React.FC = () => {
     return () => clearInterval(moveInterval);
   }, [state]);
 
-  // --- Event Handlers ---
+  // --- Bubble Text Manager ---
+  const showBubble = (text: string, duration: number = 2500) => {
+    if (bubbleTimeoutRef.current) {
+      clearTimeout(bubbleTimeoutRef.current);
+    }
+    setBubbleText(text);
+    bubbleTimeoutRef.current = setTimeout(() => {
+      setBubbleText('');
+      bubbleTimeoutRef.current = null;
+    }, duration);
+  };
 
+  // --- Event Handlers ---
   const handleClick = () => {
     if (state === 'IDLE') {
-      // Logic to START an action
       const rand = Math.random();
       const direction = Math.random() > 0.5 ? 'right' : 'left';
       setAnimationFrame(0);
+      
       const returnToIdle = (isFlying = false) => {
         if (isFlying) {
           setPosition({
@@ -83,30 +117,31 @@ const Goose: React.FC = () => {
         }
         setIdlePose(Math.floor(Math.random() * ANIMATIONS.IDLE.frames));
         setState('IDLE');
-        // CRITICAL: Reset tooltip when becoming idle
-        setTooltipText(IDLE_TOOLTIPS[Math.floor(Math.random() * IDLE_TOOLTIPS.length)]);
+        showBubble(IDLE_TOOLTIPS[Math.floor(Math.random() * IDLE_TOOLTIPS.length)]);
       };
+
       if (rand < 0.2) {
         const flyState: GooseState = direction === 'right' ? 'FLY_RIGHT' : 'FLY_LEFT';
         setState(flyState);
+        showBubble(ACTIVE_TOOLTIPS[Math.floor(Math.random() * ACTIVE_TOOLTIPS.length)]);
         setTimeout(() => returnToIdle(true), 6000);
       } else {
         const walkState: GooseState = direction === 'right' ? 'WALK_RIGHT' : 'WALK_LEFT';
         setState(walkState);
+        showBubble(ACTIVE_TOOLTIPS[Math.floor(Math.random() * ACTIVE_TOOLTIPS.length)]);
         setTimeout(() => returnToIdle(false), 5000);
       }
     } else {
       // Logic to INTERACT while active
       const randomIndex = Math.floor(Math.random() * ACTIVE_TOOLTIPS.length);
-      setTooltipText(ACTIVE_TOOLTIPS[randomIndex]);
+      showBubble(ACTIVE_TOOLTIPS[randomIndex]);
     }
   };
 
   const handleMouseEnter = () => {
-    // Only update tooltip on hover if the goose is idle
     if (state === 'IDLE') {
       const randomIndex = Math.floor(Math.random() * IDLE_TOOLTIPS.length);
-      setTooltipText(IDLE_TOOLTIPS[randomIndex]);
+      showBubble(IDLE_TOOLTIPS[randomIndex], 1500);
     }
   };
 
@@ -126,15 +161,48 @@ const Goose: React.FC = () => {
     backgroundPositionY = -(row * FRAME_HEIGHT) - currentAnimation.yOffset;
   }
 
-  const gooseStyle: React.CSSProperties = {
-    position: 'fixed', top: `${position.top}px`, left: `${position.left}px`,
-    width: `${FRAME_WIDTH}px`, height: `${FRAME_HEIGHT}px`,
-    backgroundImage: `url(${SPRITE_SRC})`,
-    backgroundPosition: `${backgroundPositionX}px ${backgroundPositionY}px`,
-    zIndex: 1000, userSelect: 'none', cursor: 'pointer', imageRendering: 'pixelated',
+  const gooseContainerStyle: React.CSSProperties = {
+    position: 'fixed',
+    top: `${position.top}px`,
+    left: `${position.left}px`,
+    width: `${FRAME_WIDTH}px`,
+    height: `${FRAME_HEIGHT}px`,
+    zIndex: 1000,
+    userSelect: 'none',
+    cursor: 'pointer',
   };
 
-  return <div style={gooseStyle} title={tooltipText} onClick={handleClick} onMouseEnter={handleMouseEnter}></div>;
+  const gooseSpriteStyle: React.CSSProperties = {
+    width: '100%',
+    height: '100%',
+    backgroundImage: `url(${SPRITE_SRC})`,
+    backgroundPosition: `${backgroundPositionX}px ${backgroundPositionY}px`,
+    imageRendering: 'pixelated',
+  };
+
+  const bubbleStyle: React.CSSProperties = {
+    position: 'absolute',
+    bottom: '95%',
+    left: '50%',
+    transform: 'translateX(-50%)',
+    padding: '8px 12px',
+    background: 'white',
+    borderRadius: '10px',
+    border: '1px solid #ccc',
+    boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+    fontSize: '14px',
+    whiteSpace: 'nowrap',
+    opacity: bubbleText ? 1 : 0,
+    transition: 'opacity 0.3s ease-in-out',
+    pointerEvents: 'none', // Important so it doesn't block clicks on the goose
+  };
+
+  return (
+    <div style={gooseContainerStyle} onClick={handleClick} onMouseEnter={handleMouseEnter}>
+      {bubbleText && <div style={bubbleStyle}>{bubbleText}</div>}
+      <div style={gooseSpriteStyle}></div>
+    </div>
+  );
 };
 
 export default Goose;
