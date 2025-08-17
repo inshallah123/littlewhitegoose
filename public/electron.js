@@ -28,9 +28,13 @@ function createWindow() {
 
   // Load the app
   const port = process.env.PORT || 3003;
-  const startUrl = isDev 
-    ? `http://localhost:${port}` 
-    : `file://${path.join(__dirname, '../build/index.html')}`;
+  const startUrl = isDev
+    ? `http://localhost:${port}`
+    : url.format({
+        pathname: path.join(app.getAppPath(), 'build/index.html'),
+        protocol: 'file:',
+        slashes: true,
+      });
   
   mainWindow.loadURL(startUrl);
 
