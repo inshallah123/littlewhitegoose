@@ -83,6 +83,62 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
     loadEvents();
   }, [loadEvents]);
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // 防止在输入框或文本区域中触发快捷键
+      const activeElement = document.activeElement;
+      if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA')) {
+        return;
+      }
+
+      let newDateMs: number | null = null;
+      const currentDayJs = dayjs(viewMs);
+
+      if (view === 'week') {
+        switch (e.key) {
+          case 'ArrowLeft':
+            newDateMs = currentDayJs.subtract(1, 'week').valueOf();
+            break;
+          case 'ArrowRight':
+            newDateMs = currentDayJs.add(1, 'week').valueOf();
+            break;
+          case 'ArrowUp':
+            newDateMs = currentDayJs.subtract(1, 'month').valueOf();
+            break;
+          case 'ArrowDown':
+            newDateMs = currentDayJs.add(1, 'month').valueOf();
+            break;
+        }
+      } else if (view === 'month') {
+        // 也为月视图添加上/下/左/右的快捷键功能
+        switch (e.key) {
+          case 'ArrowLeft':
+            newDateMs = currentDayJs.subtract(1, 'month').valueOf();
+            break;
+          case 'ArrowRight':
+            newDateMs = currentDayJs.add(1, 'month').valueOf();
+            break;
+          case 'ArrowUp':
+            newDateMs = currentDayJs.subtract(1, 'year').valueOf();
+            break;
+          case 'ArrowDown':
+            newDateMs = currentDayJs.add(1, 'year').valueOf();
+            break;
+        }
+      }
+
+      if (newDateMs) {
+        e.preventDefault(); // 防止浏览器默认行为，如滚动页面
+        setViewMs(newDateMs);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [view, viewMs, setViewMs]);
+
   const currentDate = useMemo(() => msToDate(viewMs), [viewMs]);
 
   const eventsInView = useMemo(() => {
@@ -185,10 +241,14 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
   }, [selectedDayStart, SELECTED_DAY_PROPS]);
 
   const createDefaultEvent = useCallback((startDate: Date): Partial<CalendarEvent> => {
-    return { title: '', color: '#1890ff', tags: [] };
+    const startMs = dateToMs(startDate);
+    // 默认创建一个2小时的事件
+    const endMs = dayjs(startDate).add(2, 'hour').valueOf();
+    return { title: '', color: '#1890ff', tags: [], startMs, endMs };
   }, []);
 
   const handleAddEvent = useCallback(() => {
+    // 现在的 selectedDate 已经包含了用户精确选择的日期和时间（或仅日期）
     showEventModal(createDefaultEvent(selectedDate));
   }, [selectedDate, createDefaultEvent, showEventModal]);
 
@@ -267,6 +327,7 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
             events={eventsInView}
             onAddEvent={showEventModal}
             createDefaultEvent={createDefaultEvent}
+            setSelectedMs={setSelectedMs}
           />
         ) : (
           <BigCalendar
@@ -286,9 +347,7 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
             eventPropGetter={eventStyleGetter}
             dayPropGetter={dayPropGetter}
             popup
-            views={['month', 'week']}
-            step={30}
-            timeslots={2}
+            views={['month']}
             onSelectSlot={handleSelectSlot}
             messages={CALENDAR_MESSAGES}
             formats={{ dateFormat: 'D' }}

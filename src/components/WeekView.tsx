@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import dayjs from 'dayjs';
 import { CalendarEvent } from '../types';
-import './WeekView.css';
+import '../styles/WeekView.css';
 
 interface WeekViewProps {
   currentDate: Date;
   events: CalendarEvent[];
   onAddEvent: (event: Partial<CalendarEvent>) => void;
   createDefaultEvent: (startDate: Date) => Partial<CalendarEvent>;
+  setSelectedMs: (ms: number) => void;
 }
 
 const TAG_COLORS: { [key: string]: string } = {
@@ -19,7 +20,7 @@ const TAG_COLORS: { [key: string]: string } = {
 const DEFAULT_EVENT_COLOR = '#1890ff';
 const NO_TAG_COLOR = '#FFF5F7';
 
-const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onAddEvent, createDefaultEvent }) => {
+const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onAddEvent, createDefaultEvent, setSelectedMs }) => {
   const [selectedSlot, setSelectedSlot] = useState<{ day: Date; hour: number } | null>(null);
 
   const startOfWeek = dayjs(currentDate).startOf('week');
@@ -36,6 +37,8 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onAddEvent, cr
 
   const handleSlotClick = (day: Date, hour: number) => {
     setSelectedSlot({ day, hour });
+    const selectedTimestamp = dayjs(day).hour(hour).minute(0).second(0).valueOf();
+    setSelectedMs(selectedTimestamp);
   };
 
   const handleSlotDoubleClick = (day: Date, hour: number) => {
@@ -101,15 +104,7 @@ const WeekView: React.FC<WeekViewProps> = ({ currentDate, events, onAddEvent, cr
                     onClick={() => handleSlotClick(day, slot.hour)}
                     onDoubleClick={() => handleSlotDoubleClick(day, slot.hour)}
                   >
-                    <button
-                      className="add-event-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSlotDoubleClick(day, slot.hour);
-                      }}
-                    >
-                      +
-                    </button>
+                    
                   </div>
                 );
               })}
