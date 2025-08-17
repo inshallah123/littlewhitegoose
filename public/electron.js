@@ -152,6 +152,41 @@ function createMenu() {
           click: () => {
             mainWindow.webContents.send('set-background-image', null);
           }
+        },
+        { type: 'separator' },
+        {
+          label: '背景适配模式',
+          submenu: [
+            {
+              label: '完整显示',
+              type: 'radio',
+              checked: true,
+              click: () => {
+                mainWindow.webContents.send('set-background-fit', 'contain');
+              }
+            },
+            {
+              label: '全屏覆盖',
+              type: 'radio',
+              click: () => {
+                mainWindow.webContents.send('set-background-fit', 'cover');
+              }
+            },
+            {
+              label: '拉伸填充',
+              type: 'radio',
+              click: () => {
+                mainWindow.webContents.send('set-background-fit', 'stretch');
+              }
+            },
+            {
+              label: '平铺',
+              type: 'radio',
+              click: () => {
+                mainWindow.webContents.send('set-background-fit', 'tile');
+              }
+            }
+          ]
         }
       ]
     },

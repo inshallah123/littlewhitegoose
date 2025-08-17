@@ -35,4 +35,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('set-background-image', subscription);
     return () => ipcRenderer.removeListener('set-background-image', subscription);
   },
+  onSetBackgroundFit: (callback) => {
+    const subscription = (event, ...args) => callback(...args);
+    ipcRenderer.on('set-background-fit', subscription);
+    return () => ipcRenderer.removeListener('set-background-fit', subscription);
+  },
 });

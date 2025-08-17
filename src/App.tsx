@@ -51,7 +51,7 @@ const CalendarWrapper = styled.div<{ $hasCustomBg: boolean }>`
   }
 `;
 
-const AppContainer = styled.div<{ $bgImage?: string | null }>`
+const AppContainer = styled.div<{ $bgImage?: string | null; $bgFit?: 'cover' | 'contain' | 'stretch' | 'tile' }>`
   min-height: 100vh;
   background: transparent;
   padding: 24px;
@@ -65,9 +65,18 @@ const AppContainer = styled.div<{ $bgImage?: string | null }>`
     right: 0;
     bottom: 0;
     background-image: ${({ $bgImage }) => $bgImage ? `url("${$bgImage}")` : 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)'};
-    background-size: cover;
+    background-size: ${({ $bgFit }) => {
+      switch ($bgFit) {
+        case 'cover': return 'cover';
+        case 'contain': return 'contain';
+        case 'stretch': return '100% 100%';
+        case 'tile': return 'auto';
+        default: return 'contain';
+      }
+    }};
     background-position: center;
-    background-repeat: no-repeat;
+    background-repeat: ${({ $bgFit }) => $bgFit === 'tile' ? 'repeat' : 'no-repeat'};
+    background-attachment: fixed;
     pointer-events: none;
     z-index: -1;
     transition: background-image 0.5s ease-in-out;
@@ -136,7 +145,9 @@ function App() {
   const cleanup = useCalendarStore(state => state.cleanup);
   const clearAllEvents = useCalendarStore(state => state.clearAllEvents);
   const backgroundImage = useCalendarStore(state => state.backgroundImage);
+  const backgroundFit = useCalendarStore(state => state.backgroundFit);
   const setBackgroundImage = useCalendarStore(state => state.setBackgroundImage);
+  const setBackgroundFit = useCalendarStore(state => state.setBackgroundFit);
   const loadBackgroundImage = useCalendarStore(state => state.loadBackgroundImage);
 
   useEffect(() => {
@@ -199,6 +210,11 @@ function App() {
       console.log('Received background image URL:', imageUrl); // 在这里添加日志
       setBackgroundImage(imageUrl);
     };
+    
+    const onSetBackgroundFit = (fit: 'cover' | 'contain' | 'stretch' | 'tile') => {
+      console.log('Received background fit mode:', fit);
+      setBackgroundFit(fit);
+    };
 
     const unregisterOnNewEvent = window.electronAPI.onNewEvent(onNewEvent);
     const unregisterOnChangeView = window.electronAPI.onChangeView((_event, view: string) => {
@@ -206,6 +222,7 @@ function App() {
     });
     const unregisterOnEventsCleared = window.electronAPI.onEventsCleared(onEventsCleared);
     const unregisterOnSetBackgroundImage = window.electronAPI.onSetBackgroundImage((imageUrl) => onSetBackgroundImage(imageUrl));
+    const unregisterOnSetBackgroundFit = window.electronAPI.onSetBackgroundFit?.((fit) => onSetBackgroundFit(fit));
 
 
     return () => {
@@ -213,8 +230,9 @@ function App() {
       unregisterOnChangeView?.();
       unregisterOnEventsCleared?.();
       unregisterOnSetBackgroundImage?.();
+      unregisterOnSetBackgroundFit?.();
     };
-  }, [clearAllEvents, setBackgroundImage]);
+  }, [clearAllEvents, setBackgroundImage, setBackgroundFit]);
 
   return (
     <ConfigProvider
@@ -230,7 +248,7 @@ function App() {
     >
       <AntdApp>
         <GlobalStyle $hasCustomBg={!!backgroundImage} />
-        <AppContainer $bgImage={backgroundImage}>
+        <AppContainer $bgImage={backgroundImage} $bgFit={backgroundFit}>
           <Header $hasCustomBg={!!backgroundImage}>
             <h1>Goose Calendar <span style={{ fontWeight: 400, fontSize: '32px' }}>鹅日历</span></h1>
           </Header>

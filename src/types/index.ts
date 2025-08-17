@@ -88,6 +88,8 @@ declare global {
       onNewEvent: (callback: () => void) => (() => void);
       onChangeView: (callback: (event: any, view: string) => void) => (() => void);
       onEventsCleared: (callback: () => void) => (() => void);
+      onSetBackgroundImage: (callback: (imageUrl: string) => void) => () => void;
+      onSetBackgroundFit?: (callback: (fit: 'cover' | 'contain' | 'stretch' | 'tile') => void) => () => void;
     };
   }
 }

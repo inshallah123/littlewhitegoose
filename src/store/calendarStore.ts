@@ -7,11 +7,13 @@ import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 // Linus式改进：AbortController作为状态的一部分管理
 interface CalendarStoreInternal extends CalendarStore {
   backgroundImage: string | null;
+  backgroundFit: 'cover' | 'contain' | 'stretch' | 'tile';
   _abortController: AbortController | null;
   getEventsInView: (viewStartDate: Date, viewEndDate: Date) => CalendarEvent[];
   deleteEvent: (id: string, scope: 'one' | 'all', startMs?: number) => Promise<boolean>;
   saveEvent: (event: Partial<CalendarEvent>, scope?: 'one' | 'all') => Promise<CalendarEvent | null>;
   setBackgroundImage: (imageUrl: string | null) => void;
+  setBackgroundFit: (fit: 'cover' | 'contain' | 'stretch' | 'tile') => void;
   loadBackgroundImage: () => void;
 }
 
@@ -22,6 +24,7 @@ const useCalendarStore = create<CalendarStoreInternal>((set, get) => ({
   view: 'month',
   isLoading: false,
   backgroundImage: null,
+  backgroundFit: 'contain',
   _abortController: null,
 
   // New function to get events for the current view
@@ -212,11 +215,18 @@ const useCalendarStore = create<CalendarStoreInternal>((set, get) => ({
     set({ backgroundImage: imageUrl });
   },
 
+  // Set background fit mode
+  setBackgroundFit: (fit) => {
+    localStorage.setItem('backgroundFit', fit);
+    set({ backgroundFit: fit });
+  },
+
   // Load background image from localStorage on startup
   loadBackgroundImage: () => {
     const imageUrl = localStorage.getItem('backgroundImage');
+    const fit = localStorage.getItem('backgroundFit') as 'cover' | 'contain' | 'stretch' | 'tile' || 'contain';
     if (imageUrl) {
-      set({ backgroundImage: imageUrl });
+      set({ backgroundImage: imageUrl, backgroundFit: fit });
     }
   }
 }));

@@ -7,6 +7,7 @@ import Space from 'antd/es/space';
 import AutoComplete from 'antd/es/auto-complete';
 import { PlusOutlined, LoadingOutlined } from '@ant-design/icons';
 import styled from 'styled-components';
+import './CalendarToolbar.css';
 
 const ToolbarContainer = styled.div`
   display: flex;
@@ -14,12 +15,12 @@ const ToolbarContainer = styled.div`
   align-items: center;
   margin-bottom: 24px;
   padding: 20px 0;
-  background: rgba(255, 255, 255, 0.8);
-  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.65);
+  backdrop-filter: blur(12px);
   border-radius: 16px;
-  border: 1px solid rgba(102, 126, 234, 0.1);
+  border: 1px solid rgba(102, 126, 234, 0.15);
   padding: 20px 24px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
 `;
 
 const LeftSection = styled(Space)`

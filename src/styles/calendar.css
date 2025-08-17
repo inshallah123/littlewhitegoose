@@ -11,6 +11,9 @@
   position: relative;
   overflow: hidden;
   min-height: 650px;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .calendar-container::before {
