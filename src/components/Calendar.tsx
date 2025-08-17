@@ -363,7 +363,7 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
             events={reactEvents}
             startAccessor="start"
             endAccessor="end"
-            style={{ height: 600, minHeight: 500 }}
+            style={{ minHeight: 650, height: 'auto' }}
             view={view as View}
             date={currentDate}
             onView={handleViewChange}
