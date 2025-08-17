@@ -22,9 +22,9 @@ const MonthDateCell: React.FC<MonthDateCellProps> = ({ value, label, date, child
   const isWeekend = displayDate.getDay() === 0 || displayDate.getDay() === 6;
   
   return (
-    <div className={`rbc-date-cell ${isToday ? 'rbc-today' : ''}`}>
+    <div className="rbc-date-cell">
       <div className="date-content">
-        <div className={`date-number ${isWeekend ? 'weekend' : ''}`}>
+        <div className={`date-number ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}`}>
           {displayDate.getDate()}
         </div>
         <div className="lunar-info">

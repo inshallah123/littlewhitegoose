@@ -60,33 +60,63 @@
 }
 
 .rbc-selected {
+  animation: selectPulse 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
 }
 
-.rbc-today {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%) !important;
+@keyframes selectPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(102, 126, 234, 0);
+  }
+  50% {
+    transform: scale(1.02);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.2);
+  }
+  100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
+  }
+}
+
+/* Today's date highlighting - only for the cell background */
+.rbc-month-view .rbc-today {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.08) 100%) !important;
+}
+
+.rbc-day-bg {
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  border-right: 1px solid rgba(102, 126, 234, 0.08);
+  border-bottom: 1px solid rgba(102, 126, 234, 0.08);
   position: relative;
 }
 
-.rbc-today::before {
+/* Month cell hover effect - smooth and consistent with week view */
+.rbc-month-row .rbc-row-bg .rbc-day-bg {
+  cursor: pointer;
+  position: relative;
+}
+
+.rbc-month-row .rbc-row-bg .rbc-day-bg::before {
   content: '';
   position: absolute;
   top: 0;
   left: 0;
   right: 0;
   bottom: 0;
+  background: transparent;
+  transition: background 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.rbc-month-row .rbc-row-bg .rbc-day-bg:hover::before {
   background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-  animation: gentle-pulse 2s ease-in-out infinite;
 }
 
-.rbc-day-bg {
-  transition: all 0.3s ease;
-  border-right: 1px solid rgba(102, 126, 234, 0.08);
-  border-bottom: 1px solid rgba(102, 126, 234, 0.08);
-}
-
-.rbc-day-bg:hover {
-  background: rgba(102, 126, 234, 0.05);
+.rbc-month-row .rbc-row-bg .rbc-day-bg:active::before {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  transition: none;
 }
 
 /* Toolbar */
@@ -184,6 +214,32 @@
   flex-direction: column;
 }
 
+/* Date cell selected state */
+.rbc-month-row .rbc-row-bg .rbc-day-bg.rbc-selected::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%);
+  border: 2px solid rgba(102, 126, 234, 0.4);
+  pointer-events: none;
+  z-index: 2;
+  animation: selectHighlight 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes selectHighlight {
+  0% {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 .rbc-month-row {
   /* --- FLEXBOX MAGIC --- */
   flex-grow: 1; /* Each row will share the vertical space */
@@ -199,14 +255,17 @@
 .rbc-date-cell {
   padding: 4px;
   position: relative;
+  pointer-events: none; /* Let clicks pass through to the day-bg */
+  z-index: 3;
 }
 
 .rbc-date-cell .date-content {
   display: flex;
-  flex-direction: row; /* Changed */
-  justify-content: space-between; /* Added */
-  align-items: baseline; /* Added */
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: baseline;
   padding: 2px 4px;
+  pointer-events: none; /* Ensure content doesn't block hover */
 }
 
 .rbc-date-cell .date-number {
@@ -220,11 +279,11 @@
   color: #e53e3e;
 }
 
-.rbc-date-cell.rbc-today .date-number {
-  color: #fff;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 2px 6px;
-  border-radius: 4px;
+/* Today's date number styling */
+.rbc-date-cell .date-number.today {
+  color: #667eea;
+  font-weight: 700;
+  text-shadow: 0 0 10px rgba(102, 126, 234, 0.3);
 }
 
 .rbc-date-cell .lunar-info {
@@ -256,4 +315,120 @@
 .rbc-show-more:hover {
   color: #764ba2;
   text-decoration: underline;
+}
+
+@keyframes gentle-pulse {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.02);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+/* Week View */
+.rbc-time-view {
+  border: none;
+  border-radius: 16px;
+  overflow: hidden;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+}
+
+.rbc-time-header {
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+}
+
+.rbc-time-header-content {
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.rbc-time-header-cell {
+  padding: 8px;
+}
+
+.rbc-time-header-cell .rbc-header {
+  border: none;
+}
+
+.rbc-time-content {
+  border-top: none;
+}
+
+.rbc-time-slot {
+  transition: background-color 0.3s ease;
+}
+
+.rbc-time-slot:hover {
+  background-color: rgba(102, 126, 234, 0.05);
+}
+
+.rbc-current-time-indicator {
+  background-color: #e53e3e;
+  height: 2px;
+}
+
+.rbc-time-gutter {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.rbc-label {
+  font-size: 12px;
+  color: #718096;
+}
+
+.rbc-day-slot .rbc-event {
+  border: 1px solid #667eea;
+}
+
+.rbc-day-slot .rbc-event:hover {
+  background-color: #764ba2;
+}
+
+.rbc-day-slot .rbc-background-event {
+  border: none;
+  background-color: rgba(102, 126, 234, 0.1);
+}
+
+/* Enhanced Month View Interactions */
+/* Base hover effect for day backgrounds */
+.rbc-month-view .rbc-day-bg {
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.rbc-month-view .rbc-day-bg:hover {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+  transform: scale(1.02);
+  z-index: 1;
+}
+
+.rbc-month-view .rbc-day-bg:active {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%);
+  transform: scale(1);
+  transition: none;
+}
+
+/* Selected state */
+.rbc-month-view .rbc-day-bg.rbc-selected {
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%) !important;
+  box-shadow: inset 0 0 0 2px rgba(102, 126, 234, 0.3);
+  animation: selectPulse 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Make sure date cells are interactive */
+.rbc-month-view .rbc-date-cell {
+  pointer-events: none;
+  position: relative;
+  z-index: 2;
+}
+
+.rbc-month-view .rbc-event {
+  pointer-events: auto;
+  z-index: 3;
 }
