@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
 import dayjs from 'dayjs';
 import { CalendarEvent } from '../types';
+import { getMonthCellDisplay, isHoliday, isWorkday } from '../utils/lunarCalendar';
 import '../styles/WeekView.css';
 
 // --- Constants ---
@@ -218,7 +219,15 @@ const WeekView: React.FC<WeekViewProps> = ({
           return (
             <div key={day.toISOString()} className="day-column">
               <div className="day-header">
-                {dayjs(day).format('ddd D')}
+                <div className="day-header-date">
+                  {dayjs(day).format('ddd D')}
+                </div>
+                <div className="day-header-lunar">
+                  {(() => {
+                    const info = getMonthCellDisplay(day);
+                    return info.festival || info.lunar;
+                  })()}
+                </div>
               </div>
               <div 
                 className="all-day-area"

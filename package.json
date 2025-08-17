@@ -36,6 +36,7 @@
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "electron-is-dev": "^3.0.1",
+    "lunar-javascript": "^1.7.3",
     "react": "^18.3.1",
     "react-big-calendar": "^1.19.4",
     "react-dom": "^18.3.1",

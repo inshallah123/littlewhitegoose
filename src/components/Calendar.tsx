@@ -13,6 +13,7 @@ import EventModal from './EventModal';
 import EventDetail from './EventDetail';
 import CalendarToolbar from './CalendarToolbar';
 import WeekView from './WeekView'; // Import the new WeekView component
+import MonthDateCell from './MonthDateCell';
 import '../styles/calendar.css';
 import { useRenderProfiler } from '../utils/performance';
 import { useEventSearch } from '../hooks/useEventSearch';
@@ -377,7 +378,17 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
             views={['month']}
             onSelectSlot={handleSelectSlot}
             messages={CALENDAR_MESSAGES}
-            formats={{ dateFormat: 'D' }}
+            formats={{ 
+              dateFormat: 'D',
+              monthHeaderFormat: 'MMMM YYYY',
+              dayRangeHeaderFormat: ({ start, end }) => 
+                `${dayjs(start).format('MMMM D')} - ${dayjs(end).format('D, YYYY')}`
+            }}
+            components={{
+              month: {
+                dateHeader: MonthDateCell,
+              },
+            }}
           />
         )}
       </div>

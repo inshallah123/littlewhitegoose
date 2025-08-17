@@ -14,13 +14,23 @@ const ToolbarContainer = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: 24px;
-  padding: 20px 0;
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(12px);
-  border-radius: 16px;
-  border: 1px solid rgba(102, 126, 234, 0.15);
-  padding: 20px 24px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.95) 0%, rgba(245, 247, 255, 0.90) 100%);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  border: 1px solid rgba(102, 126, 234, 0.08);
+  padding: 20px 28px;
+  box-shadow: 
+    0 10px 40px rgba(102, 126, 234, 0.08),
+    0 2px 8px rgba(0, 0, 0, 0.04),
+    inset 0 1px 2px rgba(255, 255, 255, 0.8);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  
+  &:hover {
+    box-shadow: 
+      0 12px 48px rgba(102, 126, 234, 0.12),
+      0 4px 12px rgba(0, 0, 0, 0.06),
+      inset 0 1px 2px rgba(255, 255, 255, 0.9);
+  }
 `;
 
 const LeftSection = styled(Space)`
@@ -36,10 +46,15 @@ const CenterSection = styled.div`
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 18px;
-  font-weight: 600;
-  color: #4a4a4a;
-  font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
+  font-size: 20px;
+  font-weight: 500;
+  font-family: 'Playfair Display', 'Georgia', serif;
+  font-style: italic;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: 0.5px;
 `;
 
 const NewEventButton = styled(Button)`
@@ -134,12 +149,7 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
     if (view !== 'week') return '';
     const start = dayjs(viewMs).startOf('week');
     const end = dayjs(viewMs).endOf('week');
-    const startMonth = start.format('MMM');
-    const endMonth = end.format('MMM');
-    if (startMonth === endMonth) {
-      return `${start.format('MMM D')} - ${end.format('D, YYYY')}`;
-    }
-    return `${start.format('MMM D')} - ${end.format('MMM D, YYYY')}`;
+    return `${start.format('YYYY.M.D')} - ${end.format('YYYY.M.D')}`;
   }, [viewMs, view]);
 
   return (

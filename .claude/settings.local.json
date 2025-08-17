@@ -36,7 +36,8 @@
       "Bash(npm ls:*)",
       "Bash(timeout:*)",
       "Bash(node:*)",
-      "Bash(del test-saveEvent.js)"
+      "Bash(del test-saveEvent.js)",
+      "Bash(grep:*)"
     ],
     "deny": [],
     "ask": []
