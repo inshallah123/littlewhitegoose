@@ -240,11 +240,23 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
     return dayStart === selectedDayStart ? SELECTED_DAY_PROPS : EMPTY_STYLE;
   }, [selectedDayStart, SELECTED_DAY_PROPS]);
 
-  const createDefaultEvent = useCallback((startDate: Date): Partial<CalendarEvent> => {
+  const createDefaultEvent = useCallback((startDate: Date, options: { isAllDay?: boolean } = {}): Partial<CalendarEvent> => {
+    // 如果指定为全天事件
+    if (options.isAllDay) {
+      return { 
+        title: '', 
+        color: '#1890ff', 
+        tags: [], 
+        startMs: dayjs(startDate).startOf('day').valueOf(), 
+        endMs: dayjs(startDate).endOf('day').valueOf(), 
+        isAllDay: true 
+      };
+    }
+    
+    // 默认创建2小时的定时事件
     const startMs = dateToMs(startDate);
-    // 默认创建一个2小时的事件
     const endMs = dayjs(startDate).add(2, 'hour').valueOf();
-    return { title: '', color: '#1890ff', tags: [], startMs, endMs };
+    return { title: '', color: '#1890ff', tags: [], startMs, endMs, isAllDay: false };
   }, []);
 
   const handleAddEvent = useCallback(() => {
@@ -297,6 +309,20 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
     }
   }), [handleAddEvent, setView]);
 
+  const handleWeekViewSelectEvent = useCallback((event: CalendarEvent) => {
+    // This handler is for WeekView, which passes a CalendarEvent directly
+    let completeEvent = event;
+    if (event.seriesId) {
+      const masterEvent = allEvents.find(e => e.id === event.seriesId);
+      if (masterEvent) {
+        // Combine master data with instance-specific timing
+        completeEvent = { ...masterEvent, startMs: event.startMs, endMs: event.endMs, id: masterEvent.id };
+      }
+    }
+    setSelectedEvent(completeEvent);
+    setEventDetailVisible(true);
+  }, [allEvents]);
+
   const handleCloseEventDetail = useCallback(() => {
     setEventDetailVisible(false);
     setSelectedEvent(null);
@@ -328,6 +354,7 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
             onAddEvent={showEventModal}
             createDefaultEvent={createDefaultEvent}
             setSelectedMs={setSelectedMs}
+            onSelectEvent={handleWeekViewSelectEvent}
           />
         ) : (
           <BigCalendar

@@ -43,17 +43,23 @@
   background-color: #fafafa;
   height: 40px; /* 固定头部高度 */
   box-sizing: border-box;
+  position: sticky;
+  top: 0;
+  z-index: 3;
 }
 
-.day-content {
+/* --- Row Height & Alignment --- */
+.all-day-label,
+.all-day-area,
+.time-slot-label,
+.time-slot {
   flex: 1;
-  position: relative;
-  display: flex;
-  flex-direction: column;
+  min-height: 60px; /* 统一行高 */
+  box-sizing: border-box;
 }
 
+.all-day-label,
 .time-slot-label {
-  flex: 1;
   text-align: center;
   padding: 8px 0;
   border-bottom: 1px solid #ddd;
@@ -63,24 +69,48 @@
   justify-content: center;
 }
 
-.time-slot-label:last-child,
-.time-slot:last-child {
+.time-slot-label:last-child {
   border-bottom: none;
 }
 
+/* --- Unified Cell Styles --- */
+.all-day-area,
 .time-slot {
-  flex: 1;
-  border-top: 1px dotted #e0e0e0;
-  box-sizing: border-box;
+  border-bottom: 1px solid #ddd;
   transition: background-color 0.2s ease;
+  cursor: pointer;
+  padding: 2px; /* Add padding to all cells for event layout */
 }
 
-.time-slot:first-child {
-  border-top: none;
-}
-
+.all-day-area:hover,
 .time-slot:hover {
   background-color: #e6f7ff; /* 浅蓝色悬浮效果 */
+}
+
+/* --- Unified Event Item Styles --- */
+.event-item {
+  position: relative; /* Stack within the cell */
+  border-radius: 4px;
+  padding: 1px 4px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-sizing: border-box;
+  z-index: 2;
+  margin-bottom: 2px; /* Add spacing between stacked events */
+}
+
+.day-content {
+  flex: 8; /* 8 time slots */
+  position: relative;
+  display: flex;
+  flex-direction: column;
+}
+
+.time-slot:last-child {
+  border-bottom: none;
 }
 
 .time-slot.selected {
@@ -89,17 +119,35 @@
   z-index: 1;
 }
 
-.event-item {
-  position: absolute;
-  left: 4px;
-  right: 4px;
-  border-radius: 4px;
+/* --- More Events Popover --- */
+.more-events-button {
+  font-size: 12px;
+  color: #1890ff;
+  cursor: pointer;
   padding: 2px 4px;
-  box-sizing: border-box;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  z-index: 2;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+  border-radius: 4px;
+  transition: background-color 0.2s ease;
+}
+
+.more-events-button:hover {
+  background-color: #e6f7ff;
+}
+
+.more-events-popover {
+  position: fixed;
+  z-index: 10;
+  background-color: white;
+  border: 1px solid #ddd;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  border-radius: 4px;
+  padding: 8px;
+  min-width: 150px;
+}
+
+.more-events-popover .event-item {
+  margin-bottom: 4px; /* Add some spacing in the popover */
+}
+
+.more-events-popover .event-item:last-child {
+  margin-bottom: 0;
 }
