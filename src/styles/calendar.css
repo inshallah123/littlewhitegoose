@@ -10,10 +10,13 @@
   border: 1px solid rgba(255, 255, 255, 0.2);
   position: relative;
   overflow: hidden;
-  min-height: 650px;
   background-size: cover;
   background-position: center;
   background-repeat: no-repeat;
+  /* --- FLEXBOX MAGIC --- */
+  display: flex;
+  flex-direction: column;
+  /* Let the container height be determined by its content */
 }
 
 .calendar-container::before {
@@ -31,6 +34,10 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   font-size: 14px;
   background: transparent;
+  /* --- FLEXBOX MAGIC --- */
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .rbc-event {
@@ -54,7 +61,6 @@
 
 .rbc-selected {
   box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.3);
-  /* No transform here, so it doesn't stay floated */
 }
 
 .rbc-today {
@@ -83,31 +89,13 @@
   background: rgba(102, 126, 234, 0.05);
 }
 
-.selected-date-bg {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.15) 0%, rgba(118, 75, 162, 0.15) 100%) !important;
-  border: 2px solid #667eea !important;
-  border-radius: 12px;
-  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.2);
-  position: relative;
-}
-
-.selected-date-bg::after {
-  content: '';
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  right: 2px;
-  bottom: 2px;
-  border-radius: 10px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-}
-
 /* Toolbar */
 .rbc-toolbar {
   margin-bottom: 32px;
   padding-bottom: 24px;
   border-bottom: 2px solid rgba(102, 126, 234, 0.1);
   align-items: center;
+  flex-shrink: 0; /* Prevent toolbar from shrinking */
 }
 
 .rbc-btn-group button {
@@ -162,8 +150,8 @@
 
 /* Headers */
 .rbc-month-header {
-  /* 应用一个从左到右的平滑渐变背景 */
   background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  flex-shrink: 0; /* Prevent header from shrinking */
 }
 
 .rbc-header {
@@ -172,9 +160,7 @@
   background: transparent;
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   border-right: 1px solid rgba(255, 255, 255, 0.2);
-  /* 关键改动：使用纯白色以获得最大亮度 */
   color: #FFFFFF;
-  /* 关键改动：添加一个清晰的深色投影来分离文字和浅色背景 */
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.6);
   text-align: center;
   font-size: 13px;
@@ -183,7 +169,7 @@
 }
 
 .rbc-header:last-child {
-  border-right: none; /* 移除最后一个元素的右边框 */
+  border-right: none;
 }
 
 /* Views */
@@ -192,26 +178,34 @@
   border-radius: 16px;
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  /* --- FLEXBOX MAGIC --- */
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
 }
 
-.rbc-time-view {
-  border: none;
-  border-radius: 16px;
-  overflow: hidden;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+.rbc-month-row {
+  /* --- FLEXBOX MAGIC --- */
+  flex-grow: 1; /* Each row will share the vertical space */
+  display: flex;
+  min-height: 100px; /* A sensible minimum height for a row */
+}
+
+.rbc-row-content {
+  min-height: 100%;
 }
 
 /* Date Cells */
 .rbc-date-cell {
   padding: 4px;
   position: relative;
-  min-height: 80px;
 }
 
 .rbc-date-cell .date-content {
   display: flex;
-  flex-direction: column;
-  align-items: flex-start;
+  flex-direction: row; /* Changed */
+  justify-content: space-between; /* Added */
+  align-items: baseline; /* Added */
   padding: 2px 4px;
 }
 
@@ -219,7 +213,7 @@
   font-weight: 600;
   font-size: 14px;
   color: #4a5568;
-  margin-bottom: 2px;
+  /* margin-bottom is no longer needed */
 }
 
 .rbc-date-cell .date-number.weekend {
@@ -248,48 +242,14 @@
   font-weight: 500;
 }
 
-.rbc-date-cell:hover .date-number {
-  transform: scale(1.05);
-}
-
 .rbc-off-range-bg {
   background: rgba(0, 0, 0, 0.02);
-}
-
-.rbc-off-range-bg > a {
-  color: #a0aec0;
-}
-
-.rbc-off-range-bg > a:hover {
-  background: rgba(102, 126, 234, 0.05);
-  color: #718096;
-}
-
-/* Loading Overlay */
-.loading-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(255, 255, 255, 0.8);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 10;
-  border-radius: 8px;
-}
-
-/* Animations */
-@keyframes gentle-pulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.8; }
 }
 
 .rbc-show-more {
   color: #667eea;
   font-weight: 600;
-  font-size: 13px; /* 调整“更多”文字大小 */
+  font-size: 13px;
   transition: all 0.2s ease;
 }
 
