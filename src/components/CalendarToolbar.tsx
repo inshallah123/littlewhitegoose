@@ -1,4 +1,6 @@
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
+import dayjs from 'dayjs';
+import useCalendarStore from '../store/calendarStore';
 // Linus式优化：按需引入，减少bundle体积
 import Button from 'antd/es/button';
 import Space from 'antd/es/space';
@@ -27,6 +29,16 @@ const LeftSection = styled(Space)`
   .ant-space-item:last-child {
     flex-grow: 1;
   }
+`;
+
+const CenterSection = styled.div`
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 18px;
+  font-weight: 600;
+  color: #4a4a4a;
+  font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', sans-serif;
 `;
 
 const NewEventButton = styled(Button)`
@@ -115,6 +127,20 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
   onSearch,
   onSelect
 }) => {
+  const viewMs = useCalendarStore(state => state.viewMs);
+
+  const weekDateRange = useMemo(() => {
+    if (view !== 'week') return '';
+    const start = dayjs(viewMs).startOf('week');
+    const end = dayjs(viewMs).endOf('week');
+    const startMonth = start.format('MMM');
+    const endMonth = end.format('MMM');
+    if (startMonth === endMonth) {
+      return `${start.format('MMM D')} - ${end.format('D, YYYY')}`;
+    }
+    return `${start.format('MMM D')} - ${end.format('MMM D, YYYY')}`;
+  }, [viewMs, view]);
+
   return (
     <ToolbarContainer>
       <LeftSection size={16}>
@@ -136,6 +162,8 @@ const CalendarToolbar: React.FC<CalendarToolbarProps> = ({
           allowClear
         />
       </LeftSection>
+
+      {view === 'week' && <CenterSection>{weekDateRange}</CenterSection>}
 
       <ViewButtonGroup size={8}>
         <Button

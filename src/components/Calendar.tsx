@@ -12,6 +12,7 @@ import { CalendarEvent, ReactCalendarEvent, toReactEvent, fromReactEvent, msToDa
 import EventModal from './EventModal';
 import EventDetail from './EventDetail';
 import CalendarToolbar from './CalendarToolbar';
+import WeekView from './WeekView'; // Import the new WeekView component
 import '../styles/calendar.css';
 import { useRenderProfiler } from '../utils/performance';
 import { useEventSearch } from '../hooks/useEventSearch';
@@ -260,30 +261,39 @@ const CalendarComponent = (props: CalendarProps, ref: ForwardedRef<any>) => {
           </div>
         )}
         
-        <BigCalendar
-          localizer={localizer}
-          events={reactEvents}
-          startAccessor="start"
-          endAccessor="end"
-          style={{ height: 600, minHeight: 500 }}
-          view={view as View}
-          date={currentDate}
-          onView={handleViewChange}
-          onNavigate={handleNavigate}
-          selectable
-          onSelectEvent={handleSelectEvent}
-  
-          onDoubleClickEvent={handleSelectEvent}
-          eventPropGetter={eventStyleGetter}
-          dayPropGetter={dayPropGetter}
-          popup
-          views={['month', 'week']}
-          step={30}
-          timeslots={2}
-          onSelectSlot={handleSelectSlot}
-          messages={CALENDAR_MESSAGES}
-          formats={{ dateFormat: 'D' }}
-        />
+        {view === 'week' ? (
+          <WeekView
+            currentDate={currentDate}
+            events={eventsInView}
+            onAddEvent={showEventModal}
+            createDefaultEvent={createDefaultEvent}
+          />
+        ) : (
+          <BigCalendar
+            localizer={localizer}
+            events={reactEvents}
+            startAccessor="start"
+            endAccessor="end"
+            style={{ height: 600, minHeight: 500 }}
+            view={view as View}
+            date={currentDate}
+            onView={handleViewChange}
+            onNavigate={handleNavigate}
+            selectable
+            onSelectEvent={handleSelectEvent}
+    
+            onDoubleClickEvent={handleSelectEvent}
+            eventPropGetter={eventStyleGetter}
+            dayPropGetter={dayPropGetter}
+            popup
+            views={['month', 'week']}
+            step={30}
+            timeslots={2}
+            onSelectSlot={handleSelectSlot}
+            messages={CALENDAR_MESSAGES}
+            formats={{ dateFormat: 'D' }}
+          />
+        )}
       </div>
       
       <EventModal
