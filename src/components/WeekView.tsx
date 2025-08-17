@@ -50,7 +50,8 @@ const MoreEventsPopover: React.FC<{
   popoverState: MorePopoverState | null;
   onClose: () => void;
   onSelectEvent: (event: CalendarEvent) => void;
-}> = ({ popoverState, onClose, onSelectEvent }) => {
+  containerRef: React.RefObject<HTMLDivElement>;
+}> = ({ popoverState, onClose, onSelectEvent, containerRef }) => {
   const popoverRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -63,16 +64,22 @@ const MoreEventsPopover: React.FC<{
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [onClose]);
 
-  if (!popoverState) return null;
+  if (!popoverState || !containerRef.current) return null;
 
   const { anchorElement, events } = popoverState;
-  const rect = anchorElement.getBoundingClientRect();
+  const containerRect = containerRef.current.getBoundingClientRect();
+  const anchorRect = anchorElement.getBoundingClientRect();
+
+  const style = {
+    top: anchorRect.top - containerRect.top + anchorRect.height,
+    left: anchorRect.left - containerRect.left,
+  };
 
   return (
     <div
       ref={popoverRef}
       className="more-events-popover"
-      style={{ top: rect.bottom, left: rect.left }}
+      style={style}
     >
       {events.map(event => (
         <div
@@ -103,6 +110,7 @@ const WeekView: React.FC<WeekViewProps> = ({
 }) => {
   const [selectedSlot, setSelectedSlot] = useState<{ day: Date; hour: number } | null>(null);
   const [morePopover, setMorePopover] = useState<MorePopoverState | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const startOfWeek = dayjs(currentDate).startOf('week');
   const days = Array.from({ length: 7 }).map((_, i) => startOfWeek.add(i, 'day').toDate());
@@ -150,7 +158,7 @@ const WeekView: React.FC<WeekViewProps> = ({
     });
 
     return result;
-  }, [events, days]);
+  }, [events, days, timeSlots]);
 
   const handleShowMore = (e: React.MouseEvent, key: string, events: CalendarEvent[]) => {
     e.stopPropagation();
@@ -194,7 +202,7 @@ const WeekView: React.FC<WeekViewProps> = ({
   };
 
   return (
-    <div className="week-view">
+    <div className="week-view" ref={containerRef}>
       <div className="time-axis">
         <div className="header-spacer" />
         <div className="all-day-label">全天</div>
@@ -243,6 +251,7 @@ const WeekView: React.FC<WeekViewProps> = ({
         popoverState={morePopover}
         onClose={() => setMorePopover(null)}
         onSelectEvent={onSelectEvent}
+        containerRef={containerRef}
       />
     </div>
   );

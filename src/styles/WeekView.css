@@ -1,18 +1,20 @@
+/* --- Base Layout --- */
 .week-view {
   display: flex;
-  height: 600px; /* 与 BigCalendar 高度一致 */
+  height: 100%;
   border: 1px solid #ddd;
-  border-radius: 4px;
-  overflow: hidden;
+  background-color: #fff;
   font-size: 12px;
+  position: relative; /* For popover positioning */
+  overflow: hidden;
 }
 
 .time-axis {
-  flex: 0 0 100px; /* 固定时间轴宽度 */
+  flex: 0 0 100px;
+  border-right: 1px solid #ddd;
+  background-color: #f9f9f9;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #ddd;
-  background-color: #fafafa;
 }
 
 .days-container {
@@ -23,73 +25,89 @@
 
 .day-column {
   flex: 1;
-  min-width: 120px; /* 每日最小宽度 */
+  min-width: 140px;
+  border-right: 1px solid #ddd;
   display: flex;
   flex-direction: column;
-  border-right: 1px solid #ddd;
-  position: relative; /* For event positioning */
+}
+.day-column:last-child { 
+  border-right: none; 
 }
 
-.day-column:last-child {
-  border-right: none;
-}
-
-.header-spacer,
+/* --- Headers --- */
+.header-spacer, 
 .day-header {
+  height: 40px;
+  line-height: 40px;
   text-align: center;
-  padding: 8px 0;
   border-bottom: 1px solid #ddd;
   font-weight: 500;
-  background-color: #fafafa;
-  height: 40px; /* 固定头部高度 */
   box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.day-header {
   position: sticky;
   top: 0;
+  background-color: #f9f9f9;
   z-index: 3;
 }
 
-/* --- Row Height & Alignment --- */
-.all-day-label,
-.all-day-area,
-.time-slot-label,
-.time-slot {
-  flex: 1;
-  min-height: 60px; /* 统一行高 */
+/* --- Grid & Cell Alignment --- */
+.all-day-label, 
+.all-day-area {
+  height: 120px;
+  border-bottom: 2px solid #ddd;
   box-sizing: border-box;
+  flex-shrink: 0;
+}
+
+.time-slot-label, 
+.time-slot {
+  height: 120px;
+  border-bottom: 1px solid #ddd;
+  box-sizing: border-box;
+  flex-shrink: 0;
+}
+.time-slot-label:last-child, 
+.time-slot:last-child {
+  border-bottom: none;
 }
 
 .all-day-label,
 .time-slot-label {
-  text-align: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #ddd;
-  color: #888;
   display: flex;
   align-items: center;
   justify-content: center;
+  text-align: center;
+  color: #666;
+  padding: 0 4px;
 }
 
-.time-slot-label:last-child {
-  border-bottom: none;
-}
-
-/* --- Unified Cell Styles --- */
 .all-day-area,
 .time-slot {
-  border-bottom: 1px solid #ddd;
-  transition: background-color 0.2s ease;
+  padding: 4px;
   cursor: pointer;
-  padding: 2px; /* Add padding to all cells for event layout */
+  transition: background-color 0.2s ease;
 }
-
 .all-day-area:hover,
 .time-slot:hover {
-  background-color: #e6f7ff; /* 浅蓝色悬浮效果 */
+  background-color: #e6f7ff;
+}
+.time-slot.selected {
+  background-color: #bae7ff;
+  border: 1px solid #1890ff;
+  z-index: 1;
 }
 
-/* --- Unified Event Item Styles --- */
+.day-content {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+}
+
+/* --- Event Items --- */
 .event-item {
-  position: relative; /* Stack within the cell */
   border-radius: 4px;
   padding: 1px 4px;
   font-size: 12px;
@@ -98,35 +116,21 @@
   overflow: hidden;
   text-overflow: ellipsis;
   box-sizing: border-box;
-  z-index: 2;
-  margin-bottom: 2px; /* Add spacing between stacked events */
+  margin-bottom: 2px;
+  line-height: 1.5;
 }
 
-.day-content {
-  flex: 8; /* 8 time slots */
-  position: relative;
-  display: flex;
-  flex-direction: column;
-}
-
-.time-slot:last-child {
-  border-bottom: none;
-}
-
-.time-slot.selected {
-  background-color: #bae7ff; /* 与月视图选中的日期颜色一致 */
-  border: 1px solid #1890ff;
-  z-index: 1;
-}
-
-/* --- More Events Popover --- */
+/* --- More Events Button & Popover --- */
 .more-events-button {
+  display: inline-block; /* Prevents taking full width */
+  width: auto;
   font-size: 12px;
   color: #1890ff;
   cursor: pointer;
   padding: 2px 4px;
   border-radius: 4px;
   transition: background-color 0.2s ease;
+  line-height: 1.5;
 }
 
 .more-events-button:hover {
@@ -134,7 +138,7 @@
 }
 
 .more-events-popover {
-  position: fixed;
+  position: absolute; /* Position relative to .week-view */
   z-index: 10;
   background-color: white;
   border: 1px solid #ddd;
@@ -145,7 +149,7 @@
 }
 
 .more-events-popover .event-item {
-  margin-bottom: 4px; /* Add some spacing in the popover */
+  margin-bottom: 4px;
 }
 
 .more-events-popover .event-item:last-child {
