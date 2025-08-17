@@ -1,4 +1,5 @@
 const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
+const { autoUpdater } = require('electron-updater');
 const path = require('path');
 const isDev = require('electron-is-dev');
 const fs = require('fs');
@@ -322,6 +323,7 @@ app.whenReady().then(() => {
   initializeDatabase();
   setupIPCHandlers();
   createWindow();
+  autoUpdater.checkForUpdatesAndNotify();
 });
 
 // Graceful shutdown handler
