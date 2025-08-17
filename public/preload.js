@@ -30,4 +30,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('events-cleared', subscription);
     return () => ipcRenderer.removeListener('events-cleared', subscription);
   },
+  onSetBackgroundImage: (callback) => {
+    const subscription = (event, ...args) => callback(...args);
+    ipcRenderer.on('set-background-image', subscription);
+    return () => ipcRenderer.removeListener('set-background-image', subscription);
+  },
 });

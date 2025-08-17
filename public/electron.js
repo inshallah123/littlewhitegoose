@@ -1,7 +1,9 @@
-const { app, BrowserWindow, Menu, ipcMain } = require('electron');
+const { app, BrowserWindow, Menu, ipcMain, dialog } = require('electron');
 const path = require('path');
 const isDev = require('electron-is-dev');
+const fs = require('fs');
 const DatabaseService = require('./database-service');
+const url = require('url');
 
 let mainWindow;
 let dbService;
@@ -114,6 +116,41 @@ function createMenu() {
           accelerator: 'F12',
           click: () => {
             mainWindow.webContents.toggleDevTools();
+          }
+        },
+        { type: 'separator' },
+        {
+          label: '设置背景图片...',
+          click: () => {
+            dialog.showOpenDialog(mainWindow, {
+              title: '选择背景图片',
+              filters: [
+                { name: 'Images', extensions: ['jpg', 'jpeg', 'png', 'gif'] }
+              ],
+              properties: ['openFile']
+            }).then(result => {
+              if (!result.canceled && result.filePaths.length > 0) {
+                const filePath = result.filePaths[0];
+                try {
+                  const fileData = fs.readFileSync(filePath);
+                  const base64Data = fileData.toString('base64');
+                  const ext = path.extname(filePath).substring(1);
+                  const mimeType = `image/${ext === 'jpg' ? 'jpeg' : ext}`;
+                  const dataUrl = `data:${mimeType};base64,${base64Data}`;
+                  mainWindow.webContents.send('set-background-image', dataUrl);
+                } catch (err) {
+                  console.error('Failed to read background image file:', err);
+                }
+              }
+            }).catch(err => {
+              console.error('Error opening file dialog:', err);
+            });
+          }
+        },
+        {
+          label: '恢复默认背景',
+          click: () => {
+            mainWindow.webContents.send('set-background-image', null);
           }
         }
       ]

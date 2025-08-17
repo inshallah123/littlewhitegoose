@@ -10,10 +10,11 @@ import Goose from './components/Goose';
 import useCalendarStore from './store/calendarStore';
 import 'antd/dist/reset.css';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
+import './styles/calendar.css';
 
 dayjs.extend(isBetween);
 
-const GlobalStyle = createGlobalStyle`
+const GlobalStyle = createGlobalStyle<{ $hasCustomBg: boolean }>`
   /* 引入外部字体，并建立优雅的中英文混排字体栈 */
   
   * {
@@ -27,7 +28,9 @@ const GlobalStyle = createGlobalStyle`
     -moz-osx-font-smoothing: grayscale;
     margin: 0;
     padding: 0;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: ${({ $hasCustomBg }) => $hasCustomBg 
+      ? 'none' 
+      : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'};
     min-height: 100vh;
     color: #333;
   }
@@ -41,7 +44,14 @@ const GlobalStyle = createGlobalStyle`
   }
 `;
 
-const AppContainer = styled.div`
+const CalendarWrapper = styled.div<{ $hasCustomBg: boolean }>`
+  .calendar-container, .week-view {
+    background: ${({ $hasCustomBg }) => $hasCustomBg ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.95)'};
+    transition: background 0.5s ease-in-out;
+  }
+`;
+
+const AppContainer = styled.div<{ $bgImage?: string | null }>`
   min-height: 100vh;
   background: transparent;
   padding: 24px;
@@ -54,15 +64,19 @@ const AppContainer = styled.div`
     left: 0;
     right: 0;
     bottom: 0;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    background-image: ${({ $bgImage }) => $bgImage ? `url("${$bgImage}")` : 'linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)'};
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
     pointer-events: none;
     z-index: -1;
+    transition: background-image 0.5s ease-in-out;
   }
 `;
 
-const Header = styled.div`
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(20px);
+const Header = styled.div<{ $hasCustomBg: boolean }>`
+  background: ${({ $hasCustomBg }) => $hasCustomBg ? 'rgba(255, 255, 255, 0.8)' : 'rgba(255, 255, 255, 0.95)'};
+  backdrop-filter: blur(10px);
   padding: 24px 32px;
   border-radius: 20px;
   margin-bottom: 24px;
@@ -73,6 +87,7 @@ const Header = styled.div`
   border: 1px solid rgba(255, 255, 255, 0.2);
   position: relative;
   overflow: hidden;
+  transition: background 0.5s ease-in-out;
   
   &::before {
     content: '';
@@ -120,6 +135,13 @@ function App() {
   const setViewMs = useCalendarStore(state => state.setViewMs);
   const cleanup = useCalendarStore(state => state.cleanup);
   const clearAllEvents = useCalendarStore(state => state.clearAllEvents);
+  const backgroundImage = useCalendarStore(state => state.backgroundImage);
+  const setBackgroundImage = useCalendarStore(state => state.setBackgroundImage);
+  const loadBackgroundImage = useCalendarStore(state => state.loadBackgroundImage);
+
+  useEffect(() => {
+    loadBackgroundImage();
+  }, [loadBackgroundImage]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -173,20 +195,26 @@ function App() {
     const onNewEvent = () => calendarRef.current?.handleMenuNewEvent?.();
     const onChangeView = (view: string) => calendarRef.current?.handleMenuViewChange?.(view);
     const onEventsCleared = () => clearAllEvents();
+    const onSetBackgroundImage = (imageUrl: string | null) => {
+      console.log('Received background image URL:', imageUrl); // 在这里添加日志
+      setBackgroundImage(imageUrl);
+    };
 
     const unregisterOnNewEvent = window.electronAPI.onNewEvent(onNewEvent);
     const unregisterOnChangeView = window.electronAPI.onChangeView((_event, view: string) => {
       calendarRef.current?.handleMenuViewChange?.(view);
     });
     const unregisterOnEventsCleared = window.electronAPI.onEventsCleared(onEventsCleared);
+    const unregisterOnSetBackgroundImage = window.electronAPI.onSetBackgroundImage((imageUrl) => onSetBackgroundImage(imageUrl));
 
 
     return () => {
       unregisterOnNewEvent?.();
       unregisterOnChangeView?.();
       unregisterOnEventsCleared?.();
+      unregisterOnSetBackgroundImage?.();
     };
-  }, [clearAllEvents]);
+  }, [clearAllEvents, setBackgroundImage]);
 
   return (
     <ConfigProvider
@@ -195,18 +223,20 @@ function App() {
         token: {
           colorPrimary: '#667eea',
           borderRadius: 16,
-          colorBgContainer: 'rgba(255, 255, 255, 0.95)',
+          colorBgContainer: `rgba(255, 255, 255, ${backgroundImage ? 0.8 : 0.95})`,
           boxShadow: '0 8px 32px rgba(0, 0, 0, 0.1)',
         },
       }}
     >
       <AntdApp>
-        <GlobalStyle />
-        <AppContainer>
-          <Header>
+        <GlobalStyle $hasCustomBg={!!backgroundImage} />
+        <AppContainer $bgImage={backgroundImage}>
+          <Header $hasCustomBg={!!backgroundImage}>
             <h1>Goose Calendar <span style={{ fontWeight: 400, fontSize: '32px' }}>鹅日历</span></h1>
           </Header>
-          <CalendarComponent ref={calendarRef} />
+          <CalendarWrapper $hasCustomBg={!!backgroundImage}>
+            <CalendarComponent ref={calendarRef} />
+          </CalendarWrapper>
           <Goose />
         </AppContainer>
       </AntdApp>

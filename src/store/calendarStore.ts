@@ -6,10 +6,13 @@ import { startOfMonth, endOfMonth, startOfWeek, endOfWeek } from 'date-fns';
 
 // Linus式改进：AbortController作为状态的一部分管理
 interface CalendarStoreInternal extends CalendarStore {
+  backgroundImage: string | null;
   _abortController: AbortController | null;
   getEventsInView: (viewStartDate: Date, viewEndDate: Date) => CalendarEvent[];
   deleteEvent: (id: string, scope: 'one' | 'all', startMs?: number) => Promise<boolean>;
   saveEvent: (event: Partial<CalendarEvent>, scope?: 'one' | 'all') => Promise<CalendarEvent | null>;
+  setBackgroundImage: (imageUrl: string | null) => void;
+  loadBackgroundImage: () => void;
 }
 
 const useCalendarStore = create<CalendarStoreInternal>((set, get) => ({
@@ -18,6 +21,7 @@ const useCalendarStore = create<CalendarStoreInternal>((set, get) => ({
   viewMs: nowMs(),
   view: 'month',
   isLoading: false,
+  backgroundImage: null,
   _abortController: null,
 
   // New function to get events for the current view
@@ -196,6 +200,24 @@ const useCalendarStore = create<CalendarStoreInternal>((set, get) => ({
       isLoading: false,
       _abortController: null
     });
+  },
+
+  // Set background image and persist to localStorage
+  setBackgroundImage: (imageUrl) => {
+    if (imageUrl) {
+      localStorage.setItem('backgroundImage', imageUrl);
+    } else {
+      localStorage.removeItem('backgroundImage');
+    }
+    set({ backgroundImage: imageUrl });
+  },
+
+  // Load background image from localStorage on startup
+  loadBackgroundImage: () => {
+    const imageUrl = localStorage.getItem('backgroundImage');
+    if (imageUrl) {
+      set({ backgroundImage: imageUrl });
+    }
   }
 }));
 
