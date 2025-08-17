@@ -51,14 +51,50 @@ type GooseState = 'IDLE' | 'WALK_LEFT' | 'WALK_RIGHT' | 'FLY_LEFT' | 'FLY_RIGHT'
 
 const Goose: React.FC = () => {
   const [position, setPosition] = useState({
-    top: window.innerHeight - FRAME_HEIGHT - 20,
-    left: Math.random() * (window.innerWidth - FRAME_WIDTH),
+    top: 0,
+    left: 0,
   });
   const [state, setState] = useState<GooseState>('IDLE');
   const [animationFrame, setAnimationFrame] = useState(0);
   const [idlePose, setIdlePose] = useState(() => Math.floor(Math.random() * ANIMATIONS.IDLE.frames));
   const [bubbleText, setBubbleText] = useState('');
   const bubbleTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const [isInitialized, setIsInitialized] = useState(false);
+  const bounceCountRef = useRef(0);
+
+  // Initialize position after component mount to ensure correct window dimensions
+  useEffect(() => {
+    const initializePosition = () => {
+      const calculatedTop = window.innerHeight - FRAME_HEIGHT - 20;
+      const calculatedLeft = Math.random() * (window.innerWidth - FRAME_WIDTH);
+      
+      setPosition({
+        top: Math.max(0, calculatedTop),
+        left: Math.max(0, calculatedLeft),
+      });
+      setIsInitialized(true);
+    };
+
+    // Use a small delay to ensure window dimensions are ready in Electron
+    const timer = setTimeout(initializePosition, 100);
+    
+    // Also listen for window resize to reposition if needed
+    const handleResize = () => {
+      if (state === 'IDLE') {
+        setPosition(prev => ({
+          ...prev,
+          top: Math.max(0, window.innerHeight - FRAME_HEIGHT - 20),
+        }));
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []); // Only run once on mount
 
   // Animation loop for ACTIVE states
   useEffect(() => {
@@ -70,22 +106,93 @@ const Goose: React.FC = () => {
     return () => clearInterval(animationInterval);
   }, [state]);
 
-  // Movement loop for ACTIVE states
+  // Movement loop for ACTIVE states with boundary detection
   useEffect(() => {
-    if (state === 'IDLE') return;
+    if (state === 'IDLE') {
+      bounceCountRef.current = 0; // Reset bounce count when idle
+      return;
+    }
+    
+    const maxBounces = 3; // Allow a few more steps at boundary before turning
+    
     const moveInterval = setInterval(() => {
       setPosition((prevPos) => {
         let newLeft = prevPos.left;
         let newTop = prevPos.top;
+        
+        // Calculate movement based on current state
         if (state === 'WALK_LEFT') newLeft -= MOVE_SPEED;
         if (state === 'WALK_RIGHT') newLeft += MOVE_SPEED;
         if (state === 'FLY_LEFT') { newLeft -= MOVE_SPEED * 2; newTop -= MOVE_SPEED * 0.5; }
         if (state === 'FLY_RIGHT') { newLeft += MOVE_SPEED * 2; newTop -= MOVE_SPEED * 0.5; }
-        if (newLeft > window.innerWidth - FRAME_WIDTH) newLeft = window.innerWidth - FRAME_WIDTH;
-        if (newLeft < 0) newLeft = 0;
+        
+        // Check if we've hit a boundary
+        const hitLeftBoundary = newLeft <= 0;
+        const hitRightBoundary = newLeft >= window.innerWidth - FRAME_WIDTH;
+        
+        if (hitLeftBoundary || hitRightBoundary) {
+          bounceCountRef.current++;
+          
+          // After a few bounces, turn around
+          if (bounceCountRef.current >= maxBounces) {
+            bounceCountRef.current = 0; // Reset counter
+            
+            // Turn around based on current state with random messages
+            const walkBounceMessages = [
+              '哎呀，撞墙了！掉头~',
+              '这边没路了...',
+              '咚！疼疼疼...',
+              '屏幕边界，无法突破！',
+              '让鹅撞个满怀...',
+              '前面没路了，转身！'
+            ];
+            
+            const flyBounceMessages = [
+              '飞不过去了！',
+              '这里是世界尽头吗？',
+              '撞到空气墙了！',
+              '屏幕的边界就是鹅的极限...',
+              '哎呀，差点飞出屏幕！'
+            ];
+            
+            if (state === 'WALK_LEFT' && hitLeftBoundary) {
+              setState('WALK_RIGHT');
+              showBubble(walkBounceMessages[Math.floor(Math.random() * walkBounceMessages.length)], 1500);
+            } else if (state === 'WALK_RIGHT' && hitRightBoundary) {
+              setState('WALK_LEFT');
+              showBubble(walkBounceMessages[Math.floor(Math.random() * walkBounceMessages.length)], 1500);
+            } else if (state === 'FLY_LEFT' && hitLeftBoundary) {
+              setState('FLY_RIGHT');
+              showBubble(flyBounceMessages[Math.floor(Math.random() * flyBounceMessages.length)], 1500);
+            } else if (state === 'FLY_RIGHT' && hitRightBoundary) {
+              setState('FLY_LEFT');
+              showBubble(flyBounceMessages[Math.floor(Math.random() * flyBounceMessages.length)], 1500);
+            }
+          }
+          
+          // Clamp position to boundary
+          if (newLeft > window.innerWidth - FRAME_WIDTH) newLeft = window.innerWidth - FRAME_WIDTH;
+          if (newLeft < 0) newLeft = 0;
+        } else {
+          // Reset bounce count if we're not at a boundary
+          bounceCountRef.current = 0;
+        }
+        
+        // Ensure goose doesn't fly too high
+        if (newTop < 100) {
+          newTop = 100;
+          // If flying too high, start descending
+          if (state === 'FLY_LEFT' || state === 'FLY_RIGHT') {
+            const walkState: GooseState = state === 'FLY_LEFT' ? 'WALK_LEFT' : 'WALK_RIGHT';
+            setState(walkState);
+            showBubble('飞得太高了，下来走走~', 1500);
+          }
+        }
+        
         return { top: newTop, left: newLeft };
       });
     }, 50);
+    
     return () => clearInterval(moveInterval);
   }, [state]);
 
@@ -110,9 +217,11 @@ const Goose: React.FC = () => {
       
       const returnToIdle = (isFlying = false) => {
         if (isFlying) {
+          const calculatedTop = window.innerHeight - FRAME_HEIGHT - 20;
+          const calculatedLeft = Math.random() * (window.innerWidth - FRAME_WIDTH);
           setPosition({
-              top: window.innerHeight - FRAME_HEIGHT - 20,
-              left: Math.random() * (window.innerWidth - FRAME_WIDTH),
+              top: Math.max(0, calculatedTop),
+              left: Math.max(0, calculatedLeft),
           });
         }
         setIdlePose(Math.floor(Math.random() * ANIMATIONS.IDLE.frames));
@@ -170,6 +279,8 @@ const Goose: React.FC = () => {
     zIndex: 1000,
     userSelect: 'none',
     cursor: 'pointer',
+    opacity: isInitialized ? 1 : 0,
+    transition: 'opacity 0.3s ease-in',
   };
 
   const gooseSpriteStyle: React.CSSProperties = {
