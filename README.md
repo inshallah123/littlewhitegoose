@@ -95,7 +95,7 @@ npm run electron-builder
 ### 数据存储
 - 使用 SQLite 本地数据库
 - 支持完整的 CRUD 操作
-- 数据库文件位置: `%APPDATA%/desktop-calendar/calendar.db`
+- 数据库文件位置: `%APPDATA%/goose-calendar/calendar.db`
 
 ## 🔧 开发说明
 

@@ -16,6 +16,7 @@ function createWindow() {
     height: 800,
     minWidth: 800,
     minHeight: 600,
+    title: "Goose's Calendar",
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
@@ -27,25 +28,25 @@ function createWindow() {
   });
 
   // Load the app
-  const port = process.env.PORT || 3003;
-  const startUrl = isDev
-    ? `http://localhost:${port}`
-    : url.format({
-        pathname: path.join(app.getAppPath(), 'build/index.html'),
+  const startUrl = app.isPackaged
+    ? url.format({
+        pathname: path.join(__dirname, '../build/index.html'),
         protocol: 'file:',
         slashes: true,
-      });
-  
-  mainWindow.loadURL(startUrl);
+      })
+    : 'http://localhost:3000';
+
+  mainWindow.loadURL(startUrl).catch(err => {
+    console.error('Failed to load URL:', err);
+    // If loading fails, open DevTools for debugging
+    if (!mainWindow.webContents.isDevToolsOpened()) {
+      mainWindow.webContents.openDevTools();
+    }
+  });
 
   // Show window when ready to prevent visual flash
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
-    
-    // Open DevTools in development - 注释掉以减少内存占用
-    // if (isDev) {
-    //   mainWindow.webContents.openDevTools();
-    // }
   });
 
   // Handle window closed

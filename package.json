@@ -1,24 +1,21 @@
 {
-  "name": "desktop-calendar",
+  "name": "goose-calendar",
   "version": "1.0.0",
-  "main": "build/electron.js",
+  "main": "public/electron.js",
   "homepage": "./",
   "scripts": {
-    "start": "set BROWSER=none && react-scripts start",
-    "start-with-browser": "react-scripts start",
-    "build": "react-scripts build && npm run postbuild",
-    "postbuild": "cp public/electron.js build/ 2>/dev/null || copy public\\electron.js build\\ && cp public/preload.js build/ 2>/dev/null || copy public\\preload.js build\\ && cp public/database-service.js build/ 2>/dev/null || copy public\\database-service.js build\\",
+    "start": "cross-env BROWSER=none react-scripts start",
+    "build": "react-scripts build && node scripts/post-build.js",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
     "electron": "electron .",
-    "electron-dev": "concurrently --kill-others --names \"REACT, ELECTRON\" -c \"blue,green\" \"cross-env PORT=3003 BROWSER=none npm run start\" \"wait-on http://localhost:3003 && electron .\"",
-    "electron-dev-light": "cross-env NODE_ENV=development PORT=3002 BROWSER=none react-scripts start & wait-on http://localhost:3002 && electron .",
-    "start-minimal": "cross-env NODE_ENV=development PORT=3002 BROWSER=none GENERATE_SOURCEMAP=false FAST_REFRESH=false react-scripts start",
-    "dev-fixed": "start /B cross-env PORT=3002 BROWSER=none GENERATE_SOURCEMAP=false npm run start && wait-on http://localhost:3002 && electron .",
-    "electron-only": "electron .",
-    "build-electron": "npm run build && electron-builder",
-    "dist": "npm run build && electron-builder --publish=never",
-    "publish": "npm run build && electron-builder --publish=always"
+    "electron-dev": "concurrently --kill-others --names \"REACT,ELECTRON\" -c \"blue,green\" \"cross-env BROWSER=none npm start\" \"wait-on http://localhost:3000 && electron .\"",
+    "dist": "npm run build && electron-builder",
+    "dist-mac": "npm run build && electron-builder --mac",
+    "dist-win": "npm run build && electron-builder --win",
+    "dist-linux": "npm run build && electron-builder --linux",
+    "publish": "npm run build && electron-builder --publish=always",
+    "postinstall": "electron-builder install-app-deps"
   },
   "keywords": [
     "calendar",
@@ -26,23 +23,23 @@
     "electron",
     "react"
   ],
-  "author": "",
+  "author": "yyh",
   "license": "MIT",
-  "description": "A beautiful desktop calendar application",
+  "description": "Goose's Calendar - A beautiful desktop calendar application",
   "dependencies": {
-    "@types/react": "^18.3.23",
-    "@types/react-dom": "^18.3.7",
+    "@types/react": "^19.1.10",
+    "@types/react-dom": "^19.1.7",
     "ajv": "^8.17.1",
     "antd": "^5.27.0",
     "better-sqlite3": "^12.2.0",
     "date-fns": "^4.1.0",
     "dayjs": "^1.11.13",
     "electron-is-dev": "^3.0.1",
-    "electron-updater": "^6.2.1",
+    "electron-updater": "^6.6.2",
     "lunar-javascript": "^1.7.3",
-    "react": "^18.3.1",
+    "react": "^19.1.1",
     "react-big-calendar": "^1.19.4",
-    "react-dom": "^18.3.1",
+    "react-dom": "^19.1.1",
     "react-scripts": "^5.0.1",
     "styled-components": "^6.1.19",
     "typescript": "^4.9.5",
@@ -56,7 +53,6 @@
     "cross-env": "^10.0.0",
     "electron": "^37.3.0",
     "electron-builder": "^26.0.12",
-    "electron-rebuild": "^3.2.9",
     "wait-on": "^8.0.4"
   },
   "browserslist": {
@@ -72,23 +68,80 @@
     ]
   },
   "build": {
-    "appId": "com.your-company.desktop-calendar",
-    "productName": "Desktop Calendar",
-    "copyright": "Copyright © 2025 Your Name",
+    "appId": "com.goose.calendar",
+    "productName": "Goose's Calendar",
+    "copyright": "Copyright © 2025 ${author}",
     "files": [
       "build/**/*",
-      "node_modules/**/*"
+      "public/electron.js",
+      "public/preload.js",
+      "public/database-service.js"
+    ],
+    "extraFiles": [
+      {
+        "from": "node_modules/better-sqlite3",
+        "to": "node_modules/better-sqlite3",
+        "filter": ["**/*"]
+      }
     ],
     "directories": {
-      "output": "dist"
+      "output": "dist",
+      "buildResources": "public/assets"
+    },
+    "mac": {
+      "category": "public.app-category.productivity",
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "icon": "public/assets/icon.icns"
     },
     "win": {
-      "target": "nsis",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
       "icon": "public/assets/icon.ico"
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "deb",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "public/assets/icon.png",
+      "category": "Office"
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "${productName}"
     },
     "publish": {
       "provider": "github",

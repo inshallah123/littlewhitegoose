@@ -51,7 +51,7 @@ const MoreEventsPopover: React.FC<{
   popoverState: MorePopoverState | null;
   onClose: () => void;
   onSelectEvent: (event: CalendarEvent) => void;
-  containerRef: React.RefObject<HTMLDivElement>;
+  containerRef: React.RefObject<HTMLDivElement | null>;
 }> = ({ popoverState, onClose, onSelectEvent, containerRef }) => {
   const popoverRef = useRef<HTMLDivElement>(null);
 
