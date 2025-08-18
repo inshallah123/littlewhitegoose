@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 // --- Sprite Configuration ---
-const SPRITE_SRC = '/assets/goose_sprite.png';
+// Use relative path for electron build compatibility
+const SPRITE_SRC = process.env.NODE_ENV === 'production' 
+  ? './assets/goose_sprite.png'  // For production build
+  : '/assets/goose_sprite.png';   // For development
 const FRAME_WIDTH = 115;
 const FRAME_HEIGHT = 130;
 const MOVE_SPEED = 4;
@@ -96,17 +99,33 @@ const Goose: React.FC = () => {
     };
   }, []); // Only run once on mount
 
-  // Animation loop for ACTIVE states
+  // Animation loop for ACTIVE states with requestAnimationFrame for better performance
   useEffect(() => {
     if (state === 'IDLE') return;
     const currentAnimation = ANIMATIONS[state];
-    const animationInterval = setInterval(() => {
-      setAnimationFrame((prevFrame) => (prevFrame + 1) % currentAnimation.frames);
-    }, currentAnimation.speed);
-    return () => clearInterval(animationInterval);
+    let lastTime = 0;
+    let animationId: number;
+    
+    const animate = (currentTime: number) => {
+      if (!lastTime) lastTime = currentTime;
+      const deltaTime = currentTime - lastTime;
+      
+      if (deltaTime >= currentAnimation.speed) {
+        setAnimationFrame((prevFrame) => (prevFrame + 1) % currentAnimation.frames);
+        lastTime = currentTime;
+      }
+      
+      animationId = requestAnimationFrame(animate);
+    };
+    
+    animationId = requestAnimationFrame(animate);
+    
+    return () => {
+      if (animationId) cancelAnimationFrame(animationId);
+    };
   }, [state]);
 
-  // Movement loop for ACTIVE states with boundary detection
+  // Movement loop for ACTIVE states with boundary detection using requestAnimationFrame
   useEffect(() => {
     if (state === 'IDLE') {
       bounceCountRef.current = 0; // Reset bounce count when idle
@@ -114,8 +133,15 @@ const Goose: React.FC = () => {
     }
     
     const maxBounces = 3; // Allow a few more steps at boundary before turning
+    let lastMoveTime = 0;
+    let moveAnimationId: number;
     
-    const moveInterval = setInterval(() => {
+    const moveLoop = (currentTime: number) => {
+      if (!lastMoveTime) lastMoveTime = currentTime;
+      const deltaTime = currentTime - lastMoveTime;
+      
+      if (deltaTime >= 50) { // Move every 50ms
+        lastMoveTime = currentTime;
       setPosition((prevPos) => {
         let newLeft = prevPos.left;
         let newTop = prevPos.top;
@@ -191,9 +217,16 @@ const Goose: React.FC = () => {
         
         return { top: newTop, left: newLeft };
       });
-    }, 50);
+      }
+      
+      moveAnimationId = requestAnimationFrame(moveLoop);
+    };
     
-    return () => clearInterval(moveInterval);
+    moveAnimationId = requestAnimationFrame(moveLoop);
+    
+    return () => {
+      if (moveAnimationId) cancelAnimationFrame(moveAnimationId);
+    };
   }, [state]);
 
   // --- Bubble Text Manager ---
@@ -289,6 +322,8 @@ const Goose: React.FC = () => {
     backgroundImage: `url(${SPRITE_SRC})`,
     backgroundPosition: `${backgroundPositionX}px ${backgroundPositionY}px`,
     imageRendering: 'pixelated',
+    willChange: 'transform', // Optimize for GPU acceleration
+    transform: 'translateZ(0)', // Force GPU layer
   };
 
   const bubbleStyle: React.CSSProperties = {

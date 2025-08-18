@@ -75,7 +75,15 @@
       "build/**/*",
       "public/electron.js",
       "public/preload.js",
-      "public/database-service.js"
+      "public/database-service.js",
+      "public/assets/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "public/assets",
+        "to": "assets",
+        "filter": ["**/*"]
+      }
     ],
     "extraFiles": [
       {

@@ -10,7 +10,7 @@ let mainWindow;
 let dbService;
 
 function createWindow() {
-  // Create the browser window
+  // Create the browser window with performance optimizations
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
@@ -22,9 +22,16 @@ function createWindow() {
       contextIsolation: true,
       enableRemoteModule: false,
       preload: path.join(__dirname, 'preload.js'),
+      // Performance optimizations
+      backgroundThrottling: false, // Prevent throttling when in background
+      webgl: true, // Enable WebGL for better graphics performance
+      hardwareAcceleration: true, // Enable hardware acceleration
     },
     // icon: path.join(__dirname, 'favicon.ico'), // App icon
     show: false, // Don't show until ready-to-show
+    // Performance optimizations
+    backgroundColor: '#ffffff', // Set background color to prevent flash
+    disableHtmlFullscreenWindowResize: true, // Prevent unnecessary resizing
   });
 
   // Load the app
