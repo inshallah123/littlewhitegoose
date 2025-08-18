@@ -6,6 +6,17 @@ const fs = require('fs');
 const DatabaseService = require('./database-service');
 const url = require('url');
 
+// GPU optimization: Disable hardware acceleration if it causes issues
+// You can comment this out if GPU performance is good
+// app.disableHardwareAcceleration();
+
+// Enable GPU rasterization for better performance
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+// Limit frame rate to 60fps to reduce GPU usage
+app.commandLine.appendSwitch('disable-frame-rate-limit', 'false');
+app.commandLine.appendSwitch('max-gum-fps', '60');
+
 let mainWindow;
 let dbService;
 
@@ -23,9 +34,9 @@ function createWindow() {
       enableRemoteModule: false,
       preload: path.join(__dirname, 'preload.js'),
       // Performance optimizations
-      backgroundThrottling: false, // Prevent throttling when in background
-      webgl: true, // Enable WebGL for better graphics performance
-      hardwareAcceleration: true, // Enable hardware acceleration
+      backgroundThrottling: true, // Enable throttling to save resources
+      webgl: false, // Disable WebGL as we don't need it for sprite animations
+      hardwareAcceleration: true // Keep hardware acceleration but optimize usage
     },
     // icon: path.join(__dirname, 'favicon.ico'), // App icon
     show: false, // Don't show until ready-to-show

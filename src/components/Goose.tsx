@@ -99,48 +99,34 @@ const Goose: React.FC = () => {
     };
   }, []); // Only run once on mount
 
-  // Animation loop for ACTIVE states with requestAnimationFrame for better performance
-  useEffect(() => {
-    if (state === 'IDLE') return;
-    const currentAnimation = ANIMATIONS[state];
-    let lastTime = 0;
-    let animationId: number;
-    
-    const animate = (currentTime: number) => {
-      if (!lastTime) lastTime = currentTime;
-      const deltaTime = currentTime - lastTime;
-      
-      if (deltaTime >= currentAnimation.speed) {
-        setAnimationFrame((prevFrame) => (prevFrame + 1) % currentAnimation.frames);
-        lastTime = currentTime;
-      }
-      
-      animationId = requestAnimationFrame(animate);
-    };
-    
-    animationId = requestAnimationFrame(animate);
-    
-    return () => {
-      if (animationId) cancelAnimationFrame(animationId);
-    };
-  }, [state]);
-
-  // Movement loop for ACTIVE states with boundary detection using requestAnimationFrame
+  // Combined animation and movement loop for better performance
   useEffect(() => {
     if (state === 'IDLE') {
-      bounceCountRef.current = 0; // Reset bounce count when idle
+      bounceCountRef.current = 0;
       return;
     }
     
-    const maxBounces = 3; // Allow a few more steps at boundary before turning
+    const currentAnimation = ANIMATIONS[state];
+    const maxBounces = 3;
+    let lastAnimTime = 0;
     let lastMoveTime = 0;
-    let moveAnimationId: number;
+    let animationId: number;
     
-    const moveLoop = (currentTime: number) => {
-      if (!lastMoveTime) lastMoveTime = currentTime;
-      const deltaTime = currentTime - lastMoveTime;
+    const combinedLoop = (currentTime: number) => {
+      // Handle animation frame updates
+      if (!lastAnimTime) lastAnimTime = currentTime;
+      const animDeltaTime = currentTime - lastAnimTime;
       
-      if (deltaTime >= 50) { // Move every 50ms
+      if (animDeltaTime >= currentAnimation.speed) {
+        setAnimationFrame((prevFrame) => (prevFrame + 1) % currentAnimation.frames);
+        lastAnimTime = currentTime;
+      }
+      
+      // Handle movement updates
+      if (!lastMoveTime) lastMoveTime = currentTime;
+      const moveDeltaTime = currentTime - lastMoveTime;
+      
+      if (moveDeltaTime >= 50) { // Move every 50ms
         lastMoveTime = currentTime;
       setPosition((prevPos) => {
         let newLeft = prevPos.left;
@@ -219,13 +205,13 @@ const Goose: React.FC = () => {
       });
       }
       
-      moveAnimationId = requestAnimationFrame(moveLoop);
+      animationId = requestAnimationFrame(combinedLoop);
     };
     
-    moveAnimationId = requestAnimationFrame(moveLoop);
+    animationId = requestAnimationFrame(combinedLoop);
     
     return () => {
-      if (moveAnimationId) cancelAnimationFrame(moveAnimationId);
+      if (animationId) cancelAnimationFrame(animationId);
     };
   }, [state]);
 
@@ -305,8 +291,9 @@ const Goose: React.FC = () => {
 
   const gooseContainerStyle: React.CSSProperties = {
     position: 'fixed',
-    top: `${position.top}px`,
-    left: `${position.left}px`,
+    top: 0,
+    left: 0,
+    transform: `translate(${position.left}px, ${position.top}px)`,
     width: `${FRAME_WIDTH}px`,
     height: `${FRAME_HEIGHT}px`,
     zIndex: 1000,
@@ -314,6 +301,7 @@ const Goose: React.FC = () => {
     cursor: 'pointer',
     opacity: isInitialized ? 1 : 0,
     transition: 'opacity 0.3s ease-in',
+    willChange: state !== 'IDLE' ? 'transform' : 'auto', // Only use willChange when animating
   };
 
   const gooseSpriteStyle: React.CSSProperties = {
@@ -322,8 +310,8 @@ const Goose: React.FC = () => {
     backgroundImage: `url(${SPRITE_SRC})`,
     backgroundPosition: `${backgroundPositionX}px ${backgroundPositionY}px`,
     imageRendering: 'pixelated',
-    willChange: 'transform', // Optimize for GPU acceleration
-    transform: 'translateZ(0)', // Force GPU layer
+    backfaceVisibility: 'hidden', // Prevent unnecessary repaints
+    perspective: 1000, // Create a 3D rendering context for better performance
   };
 
   const bubbleStyle: React.CSSProperties = {
